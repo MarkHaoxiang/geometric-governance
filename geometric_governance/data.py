@@ -12,7 +12,9 @@ class ElectionData:
 
         assert voter_utilities.shape == (self.num_voters, self.num_candidates)
         self.voter_utilities = torch.from_numpy(voter_utilities)
-        self.voter_preferences = torch.from_numpy(np.argsort(voter_utilities, axis=-1))
+        self.voter_preferences = torch.from_numpy(
+            np.flip(np.argsort(voter_utilities, axis=-1), axis=-1).copy()
+        )
 
 
 def generate_synthetic_election(
