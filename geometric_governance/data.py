@@ -1,5 +1,8 @@
+from typing import Literal
+
 import numpy as np
 import torch
+from torch_geometric.data import Data
 
 
 class ElectionData:
@@ -15,6 +18,65 @@ class ElectionData:
         self.voter_preferences = torch.from_numpy(
             np.flip(np.argsort(voter_utilities, axis=-1), axis=-1).copy()
         )
+
+    def to_bipartite_graph(
+        self,
+        top_k_candidates: int | None = None,
+        vote_data: Literal["ranking", "utility"] = "utility",
+    ) -> Data:
+        """"""
+        pass
+        """An election can be represented as bipartite graph between voters and candidates.
+
+        Edges between voters and candidates represent votes.
+
+        Args:
+            top_k_candidates (int | None, optional): Limit the number of candidates each voter votes for.
+                Defaults to None, i.e. a fully-connected graph (k=num_candidates).
+
+        Returns:
+            Data: A torch geometric homogenous graph object.
+        """
+        # Node feature matrix
+        # num_voters + num_candidate nodes
+        # One-hot encoding of type
+        x = torch.zeros(size=(self.num_voters + self.num_candidates, 2))
+        x[0 : self.num_voters, 0] = 1  # Voters
+        x[self.num_voters :, 1] = 1  # Candidates
+        # Graph connectivity
+        k = (
+            self.num_candidates
+            if top_k_candidates is None
+            else min(self.num_candidates, top_k_candidates)
+        )
+        edge_index = []
+        edge_attr = []
+        for voter in range(self.num_voters):
+            if vote_data == "ranking":
+                votes = [
+                    (
+                        self.voter_preferences[voter, i],
+                        1 - (i / k),
+                    )
+                    for i in range(k)
+                ]
+            else:
+                votes = [
+                    (
+                        self.voter_preferences[voter, i],
+                        self.voter_utilities[voter, self.voter_preferences[voter, i]],
+                    )
+                    for i in range(k)
+                ]
+            for candidate, score in votes:
+                edge_index.append([voter, candidate + self.num_voters])
+                edge_attr.append(score)
+        edge_index = torch.tensor(edge_index).T.long()
+        edge_attr = torch.tensor(edge_attr).unsqueeze(-1)
+
+        data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
+        data.validate(raise_on_error=True)
+        return data
 
 
 def generate_synthetic_election(
