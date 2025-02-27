@@ -8,10 +8,14 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    # hatchling and editables are required for --no-build isolation install of torch-scatter
+    "editables>=0.5",
+    "hatchling>=1.27.0",
     "ipykernel>=6.29.5",
     "numpy>=2.2.3",
     "torch>=2.6.0",
     "torch-geometric>=2.6.1",
+    "torch-scatter>=2.1.2",
     "tqdm>=4.67.1",
 ]
 
