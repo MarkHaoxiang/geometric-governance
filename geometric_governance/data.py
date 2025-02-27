@@ -72,7 +72,7 @@ class ElectionData:
                 edge_index.append([voter, candidate + self.num_voters])
                 edge_attr.append(score)
         edge_index = torch.tensor(edge_index).T.long()
-        edge_attr = torch.tensor(edge_attr).unsqueeze(-1)
+        edge_attr = torch.tensor(edge_attr).unsqueeze(-1).to(torch.float32)
 
         data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
         data.validate(raise_on_error=True)
