@@ -24,8 +24,6 @@ class ElectionData:
         top_k_candidates: int | None = None,
         vote_data: Literal["ranking", "utility"] = "utility",
     ) -> Data:
-        """"""
-        pass
         """An election can be represented as bipartite graph between voters and candidates.
 
         Edges between voters and candidates represent votes.
@@ -97,3 +95,9 @@ def generate_synthetic_election(
         num_candidates=num_candidates,
         voter_utilities=voter_utilities,
     )
+
+
+def get_scoring_function_winners(scores: torch.Tensor):
+    winners = torch.where(scores == torch.max(scores), 1, 0)
+    winners = (winners / winners.sum()).to(torch.float32)
+    return winners
