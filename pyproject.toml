@@ -17,6 +17,7 @@ dependencies = [
     "torch-geometric>=2.6.1",
     "torch-scatter>=2.1.2",
     "tqdm>=4.67.1",
+    "wandb>=0.19.8",
 ]
 
 [build-system]

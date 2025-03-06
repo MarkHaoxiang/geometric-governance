@@ -48,7 +48,6 @@ class MessagePassingElectionModel(Module):
         x = self.lin_in(data.x.to(torch.float32))
         for conv in self.convs:
             x = x + conv(x, data.edge_index, data.edge_attr)
-        candidate_idxs = data.x[:, 1] == 1
-        logits = self.lin_out(x[candidate_idxs]).squeeze(dim=-1)
-        out = scatter_log_softmax(logits, data.batch[candidate_idxs])
+        logits = self.lin_out(x[data.candidate_idxs]).squeeze(dim=-1)
+        out = scatter_log_softmax(logits, data.batch[data.candidate_idxs])
         return out
