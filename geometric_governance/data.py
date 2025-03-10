@@ -1,8 +1,14 @@
+import os
 from typing import Literal
 
 import numpy as np
 import torch
 from torch_geometric.data import Data
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), "../data")
+SUSHI = os.path.join(DATA_DIR, "sushi")
+NETFLIX = os.path.join(DATA_DIR, "netflix")
+PUZZLE = os.path.join(DATA_DIR, "puzzle")
 
 
 class ElectionData:

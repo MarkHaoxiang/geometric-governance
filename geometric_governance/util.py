@@ -8,7 +8,7 @@ import numpy as np
 
 RangeOrValue = tuple[int, int] | int
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "../outputs")
+OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "../outputs")
 
 
 class Logger:
@@ -21,7 +21,7 @@ class Logger:
         super().__init__()
         now = datetime.now()
         dir = os.path.join(
-            DATA_DIR,
+            OUTPUT_DIR,
             experiment_name,
             now.strftime("%Y-%m-%d %H-%M-%S"),
         )
