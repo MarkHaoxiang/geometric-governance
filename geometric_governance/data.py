@@ -13,14 +13,14 @@ PUZZLE = os.path.join(DATA_DIR, "puzzle")
 
 class ElectionData:
     def __init__(
-        self, num_voters: int, num_candidates: int, voter_utilities: np.ndarray
+        self, num_voters: int, num_candidates: int, voter_utilities: np.ndarray | torch.Tensor
     ):
         super().__init__()
         self.num_voters = num_voters
         self.num_candidates = num_candidates
 
         assert voter_utilities.shape == (self.num_voters, self.num_candidates)
-        self.voter_utilities = torch.from_numpy(voter_utilities)
+        self.voter_utilities = torch.from_numpy(voter_utilities) if not torch.is_tensor(voter_utilities) else voter_utilities
         self.voter_preferences = torch.from_numpy(
             np.flip(np.argsort(voter_utilities, axis=-1), axis=-1).copy()
         )
