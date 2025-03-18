@@ -61,14 +61,14 @@ class MessagePassingElectionLayer(MessagePassing):
 
 class MessagePassingStrategyLayer(MessagePassing):
     def __init__(self, in_channels, edge_channels, out_channels):
-        super(EdgeConv, self).__init__(aggr='add') 
-        
+        super(MessagePassingStrategyLayer, self).__init__(aggr='add') 
+
         self.message_mlp = nn.Sequential(
             nn.Linear(2 * in_channels + edge_channels, out_channels),
             nn.ReLU(),
             nn.Linear(out_channels, out_channels)
         )
-        
+
         self.edge_utility_mlp = nn.Sequential(
             nn.Linear(2 * in_channels + edge_channels, out_channels),
             nn.ReLU(),
@@ -77,11 +77,13 @@ class MessagePassingStrategyLayer(MessagePassing):
 
     def forward(self, x, edge_index, edge_attr):
         new_x = self.propagate(edge_index, x=x, edge_attr=edge_attr)
-        
+        new_x = x + new_x
+
         from_node, to_node = edge_index
         edge_features = torch.cat([x[from_node], x[to_node], edge_attr], dim=1)
         new_edge_attr = self.edge_utility_mlp(edge_features)
-        
+        new_edge_attr = edge_attr + new_edge_attr
+
         return new_x, new_edge_attr
 
     def message(self, x_i, x_j, edge_attr):
