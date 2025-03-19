@@ -44,6 +44,9 @@ class MessagePassingElectionLayer(MessagePassing):
         return self.message_mlp(msg_features)
 
 
+# TODO mark for yash: I think MessagePassingStrategyLayer and MessagePassingElectionLayer are the same. Can we merge them?
+
+
 class MessagePassingStrategyLayer(MessagePassing):
     def __init__(self, in_channels, edge_channels, out_channels):
         super(MessagePassingStrategyLayer, self).__init__(aggr="add")
@@ -79,7 +82,7 @@ class DeepSetStrategyModel(nn.Module):
         self,
         edge_dim: int = 1,
         emb_dim: int = 32,
-        num_layers: int = 1,
+        num_layers: int = 2,
     ):
         super().__init__()
         self.emb_dim = emb_dim
@@ -88,8 +91,18 @@ class DeepSetStrategyModel(nn.Module):
         # It is important that self.transform has a non-linearity
         # Since all the votes made by a voter sum to 1, a single linear layer
         # would assign the same transformed embedding after the scatter_add operation for all voters
-        self.transform = nn.Sequential(nn.Linear(emb_dim, emb_dim), nn.ReLU(), nn.Linear(emb_dim, emb_dim))
-        self.update = nn.Sequential(nn.Linear(2 * emb_dim, emb_dim), nn.ReLU(), nn.Linear(emb_dim, emb_dim))
+        self.transforms = nn.ModuleList()
+        self.updates = nn.ModuleList()
+        for _ in range(num_layers):
+            transform = nn.Sequential(
+                nn.Linear(emb_dim, emb_dim), nn.ReLU(), nn.Linear(emb_dim, emb_dim)
+            )
+            update = nn.Sequential(
+                nn.Linear(2 * emb_dim, emb_dim), nn.ReLU(), nn.Linear(emb_dim, emb_dim)
+            )
+            self.transforms.append(transform)
+            self.updates.append(update)
+
         self.hidden_to_vote = nn.Linear(emb_dim, edge_dim)
 
     def forward(self, edge_attr, edge_index, candidate_idxs):
@@ -99,13 +112,23 @@ class DeepSetStrategyModel(nn.Module):
         # This module can be alternatively viewed as each voter voting,
         # but not truthfully (i.e. according to their true utility profile)
         new_edge_attr = self.vote_to_hidden(edge_attr)
-        for _ in range(self.num_layers):
-            transformed_edge_attr = self.transform(new_edge_attr)
-            index = edge_index[0].unsqueeze(-1).expand(-1, transformed_edge_attr.size(-1))
-            sum_voter_scores = torch.zeros(len(candidate_idxs), self.emb_dim).scatter_add_(src=transformed_edge_attr, index=index, dim=0) # [num_nodes including candidates, emb_dim]
-            aggr_edge_attr = torch.cat([new_edge_attr, sum_voter_scores[edge_index[0]]], dim=-1)
-            new_edge_attr = self.update(aggr_edge_attr)
-        return new_edge_attr
+
+        for transform, update in zip(self.transforms, self.updates):
+            transformed_edge_attr = transform(new_edge_attr)
+            index = (
+                edge_index[0].unsqueeze(-1).expand(-1, transformed_edge_attr.size(-1))
+            )
+            sum_voter_scores = torch.zeros(
+                len(candidate_idxs), self.emb_dim, device=edge_attr.device
+            ).scatter_add_(
+                src=transformed_edge_attr, index=index, dim=0
+            )  # [num_nodes including candidates, emb_dim]
+            aggr_edge_attr = torch.cat(
+                [new_edge_attr, sum_voter_scores[edge_index[0]]], dim=-1
+            )
+            new_edge_attr = update(aggr_edge_attr)
+
+        return self.hidden_to_vote(new_edge_attr)
 
 
 class MessagePassingElectionModel(nn.Module):
