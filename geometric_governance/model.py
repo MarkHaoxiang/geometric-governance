@@ -91,6 +91,32 @@ class MessagePassingStrategyLayer(MessagePassing):
         return self.message_mlp(msg_features)
 
 
+class DeepSetStrategyModel(nn.Module):
+    def __init__(
+        self,
+        edge_dim: int = 1,
+        emb_dim: int = 32,
+        num_layers: int = 1,
+    ):
+        super().__init__()
+        self.emb_dim = emb_dim
+        self.num_layers = num_layers
+        self.vote_to_hidden = nn.Linear(edge_dim, emb_dim)
+        self.transform = nn.Linear(emb_dim, emb_dim)
+        self.update = nn.Linear(emb_dim, emb_dim)
+        self.hidden_to_vote = nn.Linear(emb_dim, edge_dim)
+
+    def forward(self, edge_attr, edge_index, candidate_idxs, selected_voter_nodes):
+        new_edge_attr = self.vote_to_hidden(edge_attr)
+        for _ in range(self.num_layers):
+            new_edge_attr = self.transform(new_edge_attr)
+            print(new_edge_attr)
+            index = edge_index[0].unsqueeze(-1).expand(-1, new_edge_attr.size(-1))
+            print(index)
+            sum_voter_scores = torch.zeros(len(candidate_idxs), self.emb_dim).scatter_add_(src=new_edge_attr, index=index, dim=0) # [num_nodes including candidates, emb_dim]
+            print(sum_voter_scores)
+
+
 class MessagePassingElectionModel(nn.Module):
     def __init__(
         self,
