@@ -113,3 +113,38 @@ def get_scoring_function_winners(scores: torch.Tensor):
     winners = torch.where(scores == torch.max(scores), 1, 0)
     winners = (winners / winners.sum()).to(torch.float32)
     return winners
+
+
+def utility_matrix_to_graph(U):
+    """
+    Converts a utility matrix U (Voters x Candidates) into a PyTorch Geometric Data object.
+
+    Parameters:
+        U (torch.Tensor): A tensor of shape (..., num_voters, num_candidates).
+
+    Returns:
+        Data: A PyTorch Geometric Data object.
+    """
+    num_voters, num_candidates = U.size(-2), U.size(-1)
+
+    # Node features: one-hot encoding for voters and candidates
+    x_voters = torch.tensor([[1, 0]] * num_voters, dtype=torch.float)
+    x_candidates = torch.tensor([[0, 1]] * num_candidates, dtype=torch.float)
+    x = torch.cat([x_voters, x_candidates], dim=0)
+
+    # Create edges
+    voter_indices = torch.arange(num_voters).repeat_interleave(num_candidates)
+    candidate_indices = torch.arange(num_candidates).repeat(num_voters)
+
+    # Shift candidate indices to match node indexing
+    candidate_indices += num_voters
+
+    edge_index = torch.stack([voter_indices, candidate_indices], dim=0)
+
+    # Edge attributes (utility values)
+    edge_attr = U.flatten().unsqueeze(-1)
+
+    # Candidate indices
+    candidate_idxs = x[:, 1] == 1
+
+    return Data(x=x, edge_index=edge_index, edge_attr=edge_attr, candidate_idxs=candidate_idxs)
