@@ -102,19 +102,27 @@ class DeepSetStrategyModel(nn.Module):
         self.emb_dim = emb_dim
         self.num_layers = num_layers
         self.vote_to_hidden = nn.Linear(edge_dim, emb_dim)
-        self.transform = nn.Linear(emb_dim, emb_dim)
-        self.update = nn.Linear(emb_dim, emb_dim)
+        # It is important that self.transform has a non-linearity
+        # Since all the votes made by a voter sum to 1, a single linear layer
+        # would assign the same transformed embedding after the scatter_add operation for all voters
+        self.transform = nn.Sequential(nn.Linear(emb_dim, emb_dim), nn.ReLU(), nn.Linear(emb_dim, emb_dim))
+        self.update = nn.Sequential(nn.Linear(2 * emb_dim, emb_dim), nn.ReLU(), nn.Linear(emb_dim, emb_dim))
         self.hidden_to_vote = nn.Linear(emb_dim, edge_dim)
 
-    def forward(self, edge_attr, edge_index, candidate_idxs, selected_voter_nodes):
+    def forward(self, edge_attr, edge_index, candidate_idxs):
+        # Updates the votes (each row in edge_attr) according to a DeepSet model,
+        # aggregating votes made by the same voter
+        # Note that there is no inter-voter communication
+        # This module can be alternatively viewed as each voter voting,
+        # but not truthfully (i.e. according to their true utility profile)
         new_edge_attr = self.vote_to_hidden(edge_attr)
         for _ in range(self.num_layers):
-            new_edge_attr = self.transform(new_edge_attr)
-            print(new_edge_attr)
-            index = edge_index[0].unsqueeze(-1).expand(-1, new_edge_attr.size(-1))
-            print(index)
-            sum_voter_scores = torch.zeros(len(candidate_idxs), self.emb_dim).scatter_add_(src=new_edge_attr, index=index, dim=0) # [num_nodes including candidates, emb_dim]
-            print(sum_voter_scores)
+            transformed_edge_attr = self.transform(new_edge_attr)
+            index = edge_index[0].unsqueeze(-1).expand(-1, transformed_edge_attr.size(-1))
+            sum_voter_scores = torch.zeros(len(candidate_idxs), self.emb_dim).scatter_add_(src=transformed_edge_attr, index=index, dim=0) # [num_nodes including candidates, emb_dim]
+            aggr_edge_attr = torch.cat([new_edge_attr, sum_voter_scores[edge_index[0]]], dim=-1)
+            new_edge_attr = self.update(aggr_edge_attr)
+        return new_edge_attr
 
 
 class MessagePassingElectionModel(nn.Module):
