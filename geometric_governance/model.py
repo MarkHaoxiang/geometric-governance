@@ -10,69 +10,22 @@ class MessagePassingElectionLayer(MessagePassing):
     def __init__(
         self,
         edge_dim: int = 1,
-        emb_dim: int = 32,
-        monotonicity_constraint: bool = False,
+        node_dim: int = 32,
     ):
         super().__init__(aggr="add")
-        self.monotonicity_constraint = monotonicity_constraint
-        self.positive_parameters = nn.ParameterDict(
-            {
-                "w_1": nn.Parameter(torch.zeros(emb_dim, 2 * emb_dim + edge_dim)),
-                "w_2": nn.Parameter(torch.zeros(emb_dim, emb_dim)),
-            }
-        )
-
-        self.other_parameters = nn.ParameterDict(
-            {
-                "b_1": nn.Parameter(torch.zeros(emb_dim)),
-                "b_2": nn.Parameter(torch.zeros(emb_dim)),
-            }
-        )
-
-        for param in self.positive_parameters.values():
-            nn.init.xavier_uniform_(param)
-
-        self.batch_norm_1 = nn.BatchNorm1d(emb_dim)
-        self.batch_norm_2 = nn.BatchNorm1d(emb_dim)
-
-    def forward(self, x, edge_index, edge_attr):
-        out = self.propagate(edge_index, x=x, edge_attr=edge_attr)
-        return out
-
-    def message(self, x_i, x_j, edge_attr):
-        msg = torch.cat([x_i, x_j, edge_attr], dim=-1)
-
-        def h(x):
-            return F.softplus(x) if self.monotonicity_constraint else x
-
-        msg = F.linear(
-            msg, h(self.positive_parameters["w_1"]), self.other_parameters["b_1"]
-        )
-        msg = self.batch_norm_1(msg)
-        msg = F.relu(msg)
-        msg = F.linear(
-            msg, h(self.positive_parameters["w_2"]), self.other_parameters["b_2"]
-        )
-        msg = self.batch_norm_2(msg)
-        msg = F.relu(msg)
-
-        return msg
-
-
-class MessagePassingStrategyLayer(MessagePassing):
-    def __init__(self, in_channels, edge_channels, out_channels):
-        super(MessagePassingStrategyLayer, self).__init__(aggr='add') 
 
         self.message_mlp = nn.Sequential(
-            nn.Linear(2 * in_channels + edge_channels, out_channels),
+            nn.Linear(2 * node_dim + edge_dim, node_dim),
+            nn.BatchNorm1d(node_dim),
             nn.ReLU(),
-            nn.Linear(out_channels, out_channels)
+            nn.Linear(node_dim, node_dim),
         )
 
         self.edge_utility_mlp = nn.Sequential(
-            nn.Linear(2 * in_channels + edge_channels, out_channels),
+            nn.Linear(2 * node_dim + edge_dim, edge_dim),
+            nn.BatchNorm1d(edge_dim),
             nn.ReLU(),
-            nn.Linear(out_channels, edge_channels)
+            nn.Linear(edge_dim, edge_dim),
         )
 
     def forward(self, x, edge_index, edge_attr):
@@ -83,6 +36,36 @@ class MessagePassingStrategyLayer(MessagePassing):
         edge_features = torch.cat([x[from_node], x[to_node], edge_attr], dim=1)
         new_edge_attr = self.edge_utility_mlp(edge_features)
         new_edge_attr = edge_attr + new_edge_attr
+
+        return new_x, new_edge_attr
+
+    def message(self, x_i, x_j, edge_attr):
+        msg_features = torch.cat([x_i, x_j, edge_attr], dim=1)
+        return self.message_mlp(msg_features)
+
+
+class MessagePassingStrategyLayer(MessagePassing):
+    def __init__(self, in_channels, edge_channels, out_channels):
+        super(MessagePassingStrategyLayer, self).__init__(aggr="add")
+
+        self.message_mlp = nn.Sequential(
+            nn.Linear(2 * in_channels + edge_channels, out_channels),
+            nn.ReLU(),
+            nn.Linear(out_channels, out_channels),
+        )
+
+        self.edge_utility_mlp = nn.Sequential(
+            nn.Linear(2 * in_channels + edge_channels, out_channels),
+            nn.ReLU(),
+            nn.Linear(out_channels, edge_channels),
+        )
+
+    def forward(self, x, edge_index, edge_attr):
+        new_x = self.propagate(edge_index, x=x, edge_attr=edge_attr)
+
+        from_node, to_node = edge_index
+        edge_features = torch.cat([x[from_node], x[to_node], edge_attr], dim=1)
+        new_edge_attr = self.edge_utility_mlp(edge_features)
 
         return new_x, new_edge_attr
 
@@ -129,43 +112,36 @@ class MessagePassingElectionModel(nn.Module):
     def __init__(
         self,
         edge_dim: int = 1,
-        emb_dim: int = 32,
+        node_emb_dim: int = 32,
+        edge_emb_dim: int = 8,
         num_layers: int = 4,
-        monotonicity_constraint: bool = False,
     ):
         super().__init__()
         in_dim = 2
 
         # Initial embedding
-        self.lin_in_weights = nn.Parameter(torch.zeros(emb_dim, in_dim))
-        self.lin_in_bias = nn.Parameter(torch.zeros(emb_dim))
+        self.lin_in_node = nn.Linear(in_dim, node_emb_dim)
+        self.lin_out_node = nn.Linear(node_emb_dim, 1)
+        self.lin_in_edge = nn.Linear(edge_dim, edge_emb_dim)
 
         # Convolution layers
         self.convs = torch.nn.ModuleList()
         for _ in range(num_layers):
             self.convs.append(
                 MessagePassingElectionLayer(
-                    edge_dim, emb_dim, monotonicity_constraint=monotonicity_constraint
+                    edge_dim=edge_emb_dim, node_dim=node_emb_dim
                 )
             )
-        # Readout
-        self.lin_out_weights = nn.Parameter(torch.zeros(1, emb_dim))
-        self.lin_out_bias = nn.Parameter(torch.zeros(()))
-
-        nn.init.xavier_uniform_(self.lin_in_weights)
-        nn.init.xavier_uniform_(self.lin_out_weights)
-
-        self.monotonicity_constraint = monotonicity_constraint
 
     def forward(self, data: Data):
-        def h(x):
-            return F.softplus(x) if self.monotonicity_constraint else x
-
-        x = F.linear(data.x, h(self.lin_in_weights), self.lin_in_bias)
+        x = self.lin_in_node(data.x)
+        edge_attr = self.lin_in_edge(data.edge_attr)
         for conv in self.convs:
-            x = x + conv(x, data.edge_index, data.edge_attr)
-        logits = F.linear(
-            x[data.candidate_idxs], h(self.lin_out_weights), self.lin_out_bias
-        ).squeeze(dim=-1)
+            new_x, new_edge = conv(x, data.edge_index, edge_attr)
+            x = x + new_x
+            edge_attr = edge_attr + new_edge
+
+        logits = self.lin_out_node(x[data.candidate_idxs]).squeeze(dim=-1)
+
         out = scatter_log_softmax(logits, data.batch[data.candidate_idxs])
         return out
