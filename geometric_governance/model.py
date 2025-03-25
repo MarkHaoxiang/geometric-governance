@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch_geometric.nn import MessagePassing
+from torch_geometric.nn import MessagePassing, MLP, DeepSetsAggregation
 from torch_geometric.data import Data
 from torch_scatter import scatter_log_softmax
 
@@ -16,14 +15,14 @@ class MessagePassingElectionLayer(MessagePassing):
 
         self.message_mlp = nn.Sequential(
             nn.Linear(2 * node_dim + edge_dim, node_dim),
-            nn.BatchNorm1d(node_dim),
+            nn.LayerNorm(node_dim),
             nn.ReLU(),
             nn.Linear(node_dim, node_dim),
         )
 
         self.edge_utility_mlp = nn.Sequential(
             nn.Linear(2 * node_dim + edge_dim, edge_dim),
-            nn.BatchNorm1d(edge_dim),
+            nn.LayerNorm(edge_dim),
             nn.ReLU(),
             nn.Linear(edge_dim, edge_dim),
         )
@@ -168,3 +167,19 @@ class MessagePassingElectionModel(nn.Module):
 
         out = scatter_log_softmax(logits, data.batch[data.candidate_idxs])
         return out
+
+
+class DeepSetElectionModel(nn.Module):
+    def __init__(self, num_candidates: int, embedding_size: int = 128):
+        super().__init__()
+
+        self.local_nn = MLP([num_candidates, embedding_size, embedding_size])
+        self.global_nn = MLP([embedding_size, embedding_size, num_candidates])
+
+        self.deepset = DeepSetsAggregation(
+            local_nn=self.local_nn, global_nn=self.global_nn
+        )
+
+    def forward(self, x, index):
+        scores = self.deepset(x, index=index)
+        return scores

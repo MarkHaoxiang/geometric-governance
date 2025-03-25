@@ -3,6 +3,8 @@ from typing import Literal
 
 import numpy as np
 import torch
+from torch.utils.data import Dataset as TorchDataset
+
 from torch_geometric.data import Data
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "../data")
@@ -31,6 +33,14 @@ class ElectionData:
         self.voter_preferences = torch.from_numpy(
             np.flip(np.argsort(voter_utilities, axis=-1), axis=-1).copy()
         )
+
+        self.positional_ballots = torch.zeros(
+            (self.num_candidates, self.num_candidates)
+        )
+        for i in range(self.num_candidates):
+            ith_place = self.voter_preferences[:, i]
+            counts = torch.bincount(ith_place, minlength=num_candidates)
+            self.positional_ballots[i] = counts
 
     def to_bipartite_graph(
         self,
@@ -157,3 +167,38 @@ def utility_matrix_to_graph(U):
     return Data(
         x=x, edge_index=edge_index, edge_attr=edge_attr, candidate_idxs=candidate_idxs
     )
+
+
+class SetDataset(TorchDataset):
+    def __init__(
+        self,
+        voter_preferences_list: list,
+        winner_list: list,
+    ):
+        super().__init__()
+        self.X = voter_preferences_list
+        self.y = winner_list
+
+        assert len(self.X) == len(self.y)
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, index):
+        return (self.X[index], self.y[index])
+
+    @staticmethod
+    def collate_fn(data):
+        voter_preferences_list = [x[0] for x in data]
+        winners_list = [x[1] for x in data]
+
+        X = torch.concat(voter_preferences_list, dim=0)
+        index = [
+            torch.full(size=(x.shape[0],), fill_value=n)
+            for n, x in enumerate(voter_preferences_list)
+        ]
+        index = torch.concat(index, dim=0)
+
+        y = torch.stack(winners_list)
+
+        return X.to(torch.float32), index, y

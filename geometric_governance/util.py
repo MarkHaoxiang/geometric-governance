@@ -29,23 +29,36 @@ class Logger:
         self.experiment_name = experiment_name
         self.dir = dir
         self.checkpoint_dir = os.path.join(dir, "checkpoints")
+        self.config = config
+        self.mode = mode
 
         os.makedirs(dir, exist_ok=False)
         os.makedirs(self.checkpoint_dir, exist_ok=False)
-
-        wandb.init(
-            project="geometric-governance",
-            name=experiment_name,
-            dir=self.dir,
-            config=config,
-            mode=mode,
-        )
 
     def log(self, data: dict[str, Any]):
         wandb.log(data, commit=False)
 
     def commit(self):
         wandb.log({}, commit=True)
+
+    def begin(self):
+        wandb.init(
+            project="geometric-governance",
+            name=self.experiment_name,
+            dir=self.dir,
+            config=self.config,
+            mode=self.mode,
+        )
+
+    def close(self):
+        wandb.finish()
+
+    def __enter__(self):
+        self.begin()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
 
 def get_value(v: RangeOrValue, rng: np.random.Generator) -> int:
