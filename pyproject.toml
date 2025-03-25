@@ -14,9 +14,8 @@ dependencies = [
     "ipykernel>=6.29.5",
     "numpy>=2.2.3",
     "preflibtools>=2.0.32",
-    "torch>=2.6.0",
+    "torch == 2.5.0",
     "torch-geometric>=2.6.1",
-    "torch-scatter>=2.1.2",
     "tqdm>=4.67.1",
     "wandb>=0.19.8",
 ]
@@ -30,3 +29,6 @@ dev = [
     "pytest>=8.3.4",
     "ruff>=0.9.4",
 ]
+
+[tool.hatch.metadata]
+allow-direct-references = true
