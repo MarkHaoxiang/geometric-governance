@@ -34,6 +34,8 @@ class ElectionData:
             np.flip(np.argsort(voter_utilities, axis=-1), axis=-1).copy()
         )
 
+        self.voter_preferences_alt = torch.argsort(self.voter_preferences, dim=1)
+
         self.positional_ballots = torch.zeros(
             (self.num_candidates, self.num_candidates)
         )
@@ -49,8 +51,8 @@ class ElectionData:
             for j in range(self.num_candidates):
                 if i == j:
                     continue
-                ith_place = self.voter_preferences[:, i]
-                jth_place = self.voter_preferences[:, j]
+                ith_place = self.voter_preferences_alt[:, i]
+                jth_place = self.voter_preferences_alt[:, j]
                 wins = torch.sum(ith_place < jth_place)
                 losses = torch.sum(jth_place < ith_place)
                 counts = wins - losses
