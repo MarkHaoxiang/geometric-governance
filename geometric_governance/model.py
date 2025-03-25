@@ -131,6 +131,40 @@ class DeepSetStrategyModel(nn.Module):
         return self.hidden_to_vote(new_edge_attr)
 
 
+class MLPStrategyModel(nn.Module):
+    def __init__(
+        self,
+        edge_dim: int = 1,
+        emb_dim: int = 32,
+        num_layers: int = 4,
+    ):
+        super().__init__()
+        self.emb_dim = emb_dim
+        self.num_layers = num_layers
+        self.vote_to_hidden = nn.Linear(edge_dim, emb_dim)
+        # It is important that self.transform has a non-linearity
+        # Since all the votes made by a voter sum to 1, a single linear layer
+        # would assign the same transformed embedding after the scatter_add operation for all voters
+        self.transforms = nn.ModuleList()
+        self.updates = nn.ModuleList()
+        for _ in range(num_layers):
+            transform = nn.Sequential(
+                nn.Linear(emb_dim, emb_dim), nn.ReLU(),
+            )
+            self.transforms.append(transform)
+
+        self.hidden_to_vote = nn.Linear(emb_dim, edge_dim)
+
+    def forward(self, edge_attr, edge_index, candidate_idxs):
+        # Updates the votes (each row in edge_attr) according to an MLP model
+        new_edge_attr = self.vote_to_hidden(edge_attr)
+
+        for transform in self.transforms:
+            new_edge_attr = transform(new_edge_attr)
+
+        return self.hidden_to_vote(new_edge_attr)
+
+
 class MessagePassingElectionModel(nn.Module):
     def __init__(
         self,
