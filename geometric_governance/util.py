@@ -65,3 +65,12 @@ def get_value(v: RangeOrValue, rng: np.random.Generator) -> int:
     if isinstance(v, tuple):
         return rng.integers(low=v[0], high=v[1])
     return v
+
+
+def get_max(v: RangeOrValue) -> int:
+    if isinstance(v, tuple):
+        return v[1]
+    elif isinstance(v, int):
+        return v
+    else:
+        raise ValueError("Invalid value type")

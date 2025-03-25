@@ -173,8 +173,12 @@ class DeepSetElectionModel(nn.Module):
     def __init__(self, num_candidates: int, embedding_size: int = 128):
         super().__init__()
 
-        self.local_nn = MLP([num_candidates, embedding_size, embedding_size])
-        self.global_nn = MLP([embedding_size, embedding_size, num_candidates])
+        self.local_nn = MLP(
+            [num_candidates, embedding_size, embedding_size, embedding_size]
+        )
+        self.global_nn = MLP(
+            [embedding_size, embedding_size, embedding_size, num_candidates]
+        )
 
         self.deepset = DeepSetsAggregation(
             local_nn=self.local_nn, global_nn=self.global_nn

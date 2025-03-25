@@ -42,6 +42,25 @@ class ElectionData:
             counts = torch.bincount(ith_place, minlength=num_candidates)
             self.positional_ballots[i] = counts
 
+        self.pairwise_comparison = torch.zeros(
+            (self.num_candidates, self.num_candidates)
+        )
+        for i in range(self.num_candidates):
+            for j in range(self.num_candidates):
+                if i == j:
+                    continue
+                ith_place = self.voter_preferences[:, i]
+                jth_place = self.voter_preferences[:, j]
+                wins = torch.sum(ith_place < jth_place)
+                losses = torch.sum(jth_place < ith_place)
+                counts = wins - losses
+                self.pairwise_comparison[i, j] = counts
+        self.tournament_embedding = (
+            (self.pairwise_comparison > 0) * 1.0
+            + (self.pairwise_comparison == 0) * 1 / 2
+            - torch.eye(self.num_candidates) * 1 / 2
+        ).to(torch.float32)
+
     def to_bipartite_graph(
         self,
         top_k_candidates: int | None = None,
