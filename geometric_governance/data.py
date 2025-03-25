@@ -28,6 +28,7 @@ class ElectionData:
             if not torch.is_tensor(voter_utilities)
             else voter_utilities
         )
+        self.voter_utilities = self.voter_utilities / torch.sum(self.voter_utilities, dim=-1, keepdim=True) # Normalize so max is 1
         self.voter_preferences = torch.from_numpy(
             np.flip(np.argsort(voter_utilities, axis=-1), axis=-1).copy()
         )
