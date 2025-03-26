@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.nn import MessagePassing, MLP, DeepSetsAggregation
 from torch_geometric.data import Data
-from torch_scatter import scatter_log_softmax
+from torch_scatter import scatter_log_softmax, scatter_add
 
 
 class MessagePassingElectionLayer(MessagePassing):
@@ -81,7 +81,7 @@ class DeepSetStrategyModel(nn.Module):
         self,
         edge_dim: int = 1,
         emb_dim: int = 32,
-        num_layers: int = 2,
+        num_layers: int = 1,
     ):
         super().__init__()
         self.emb_dim = emb_dim
@@ -94,15 +94,26 @@ class DeepSetStrategyModel(nn.Module):
         self.updates = nn.ModuleList()
         for _ in range(num_layers):
             transform = nn.Sequential(
-                nn.Linear(emb_dim, emb_dim), nn.ReLU(), nn.Linear(emb_dim, emb_dim)
+                nn.Linear(emb_dim, emb_dim),
+                nn.LeakyReLU(),
+                nn.Linear(emb_dim, emb_dim),
             )
             update = nn.Sequential(
-                nn.Linear(2 * emb_dim, emb_dim), nn.ReLU(), nn.Linear(emb_dim, emb_dim)
+                # nn.Linear(emb_dim, emb_dim),
+                nn.Linear(2 * emb_dim, emb_dim),
+                nn.LeakyReLU(),
+                nn.Linear(emb_dim, emb_dim),
             )
             self.transforms.append(transform)
             self.updates.append(update)
 
-        self.hidden_to_vote = nn.Linear(emb_dim, edge_dim)
+        self.hidden_to_vote = nn.Sequential(
+            nn.Linear(emb_dim * 2, emb_dim),
+            nn.LeakyReLU(),
+            nn.Linear(emb_dim, emb_dim),
+            nn.LeakyReLU(),
+            nn.Linear(emb_dim, 1),
+        )
 
     def forward(self, edge_attr, edge_index, candidate_idxs):
         # Updates the votes (each row in edge_attr) according to a DeepSet model,
@@ -110,24 +121,49 @@ class DeepSetStrategyModel(nn.Module):
         # Note that there is no inter-voter communication
         # This module can be alternatively viewed as each voter voting,
         # but not truthfully (i.e. according to their true utility profile)
-        new_edge_attr = self.vote_to_hidden(edge_attr)
+        # vote_sum = scatter_add(edge_attr, index=edge_index[0], dim=0)
+        # vote_sum = vote_sum[edge_index[0]]
+        # normalised_votes = edge_attr / vote_sum
+        # hidden_edge_attr = self.vote_to_hidden(normalised_votes)
 
+        hidden_edge_attr = self.vote_to_hidden(edge_attr)
+
+        new_edge_attr = hidden_edge_attr
         for transform, update in zip(self.transforms, self.updates):
             transformed_edge_attr = transform(new_edge_attr)
             index = (
                 edge_index[0].unsqueeze(-1).expand(-1, transformed_edge_attr.size(-1))
             )
-            sum_voter_scores = torch.zeros(
-                len(candidate_idxs), self.emb_dim, device=edge_attr.device
-            ).scatter_add_(
-                src=transformed_edge_attr, index=index, dim=0
-            )  # [num_nodes including candidates, emb_dim]
+            sum_voter_scores = scatter_add(transformed_edge_attr, index, dim=0)
             aggr_edge_attr = torch.cat(
                 [new_edge_attr, sum_voter_scores[edge_index[0]]], dim=-1
             )
+            # aggr_edge_attr = new_edge_attr + sum_voter_scores[edge_index[0]]
             new_edge_attr = update(aggr_edge_attr)
 
-        return self.hidden_to_vote(new_edge_attr)
+        new_edge_attr = torch.cat([hidden_edge_attr, new_edge_attr], dim=-1)
+        votes = torch.nn.functional.tanh(self.hidden_to_vote(new_edge_attr))
+
+        return edge_attr + votes
+
+
+class MLPStrategyModel(nn.Module):
+    def __init__(self, num_candidates: int, emb_dim: int = 32):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(num_candidates, emb_dim),
+            nn.LeakyReLU(),
+            nn.Linear(emb_dim, emb_dim),
+            nn.LeakyReLU(),
+            nn.Linear(emb_dim, num_candidates),
+        )
+        self.num_candidates = num_candidates
+
+    def forward(self, edge_attr: torch.Tensor, edge_index, candidate_idxs):
+        # Reshape edge attr to be of shape (num_voters, num_candidates)
+        votes = edge_attr.reshape(-1, self.num_candidates)
+        votes = self.net(votes)
+        return votes.reshape(edge_attr.shape)
 
 
 class MessagePassingElectionModel(nn.Module):

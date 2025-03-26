@@ -8,16 +8,18 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    # hatchling and editables are required for --no-build isolation install of torch-scatter
     "editables>=0.5",
     "hatchling>=1.27.0",
     "ipykernel>=6.29.5",
+    "matplotlib>=3.10.1",
     "numpy>=2.2.3",
     "preflibtools>=2.0.32",
     "torch == 2.5.0",
     "torch-geometric>=2.6.1",
     "tqdm>=4.67.1",
     "wandb>=0.19.8",
+    # Manually install torch_scatter
+    # uv pip install torch-scatter -f https://data.pyg.org/whl/torch-2.5.0+cu124.html
 ]
 
 [build-system]
