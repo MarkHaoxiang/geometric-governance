@@ -34,7 +34,8 @@ class Config(BaseModel):
     monotonicity_loss_batch_size: int
 
     # Model parameters
-    representation: str
+    representation: Literal["graph", "set"]
+    model_size: Literal["small", "large"]
 
     # Experiment utility
     repeat_number: int | None = None

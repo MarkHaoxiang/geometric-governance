@@ -71,6 +71,7 @@ def main(cfg):
     model = create_election_model(
         representation=cfg.representation,
         num_candidates=get_max(cfg.train_dataset.num_candidates),
+        model_size=cfg.model_size,
     ).to(device=device)
     print(f"parameter_count: {get_parameter_count(model)}")
 
@@ -87,7 +88,9 @@ def main(cfg):
         milestones=[warmup_epochs],
     )
 
-    experiment_name = f"{cfg.representation}-election-{cfg.voting_rule}"
+    experiment_name = (
+        f"{cfg.representation}-election-{cfg.voting_rule}-{cfg.model_size}"
+    )
     logger = Logger(
         experiment_name=experiment_name,
         config=cfg,

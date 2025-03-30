@@ -30,3 +30,4 @@ logging_mode: online
 monotonicity_loss_enable: false
 monotonicity_loss_batch_size: 32
 representation: graph
+model_size: small

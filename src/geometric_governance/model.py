@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -193,15 +194,15 @@ class MessagePassingElectionModel(ElectionModel):
 
 
 class DeepSetElectionModel(ElectionModel):
-    def __init__(self, num_candidates: int, embedding_size: int = 128):
+    def __init__(
+        self, num_candidates: int, embedding_size: int = 128, num_layers: int = 3
+    ):
         super().__init__()
 
-        self.local_nn = MLP(
-            [num_candidates, embedding_size, embedding_size, embedding_size]
-        )
-        self.global_nn = MLP(
-            [embedding_size, embedding_size, embedding_size, num_candidates]
-        )
+        embedding_layers = [embedding_size for _ in range(num_layers)]
+
+        self.local_nn = MLP([num_candidates] + embedding_layers)
+        self.global_nn = MLP(embedding_layers + [num_candidates])
 
         self.deepset = DeepSetsAggregation(
             local_nn=self.local_nn, global_nn=self.global_nn
@@ -220,19 +221,30 @@ class DeepSetElectionModel(ElectionModel):
 
 
 def create_election_model(
-    representation: str, num_candidates: int | None = None
+    representation: str,
+    num_candidates: int | None = None,
+    model_size: Literal["small", "medium"] = "small",
 ) -> ElectionModel:
-    election_model: ElectionModel
-    match representation:
-        case "graph":
-            election_model = MessagePassingElectionModel(
+    model: ElectionModel
+    match representation, model_size:
+        case "graph", "small":
+            model = MessagePassingElectionModel(
+                node_emb_dim=80, edge_emb_dim=20, num_layers=4, edge_dim=1
+            )
+        case "graph", "medium":
+            model = MessagePassingElectionModel(
                 node_emb_dim=256, edge_emb_dim=64, num_layers=4, edge_dim=1
             )
-        case "set":
+        case "set", "small":
             assert num_candidates is not None, ""
-            election_model = DeepSetElectionModel(
-                num_candidates=num_candidates, embedding_size=155
+            model = DeepSetElectionModel(
+                num_candidates=num_candidates, embedding_size=155, num_layers=3
+            )
+        case "set", "medium":
+            assert num_candidates is not None, ""
+            model = DeepSetElectionModel(
+                num_candidates=num_candidates, embedding_size=352, num_layers=5
             )
         case _:
-            raise ValueError(f"Unknown model for {representation}")
-    return election_model
+            raise ValueError(f"Unknown model for {representation} {model_size}")
+    return model
