@@ -1,16 +1,11 @@
-import os
 from typing import Literal
+from dataclasses import dataclass
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset as TorchDataset
 
 from torch_geometric.data import Data
-
-DATA_DIR = os.path.join(os.path.dirname(__file__), "../data")
-SUSHI = os.path.join(DATA_DIR, "sushi")
-NETFLIX = os.path.join(DATA_DIR, "netflix")
-PUZZLE = os.path.join(DATA_DIR, "puzzle")
 
 
 class ElectionData:
@@ -30,19 +25,19 @@ class ElectionData:
             if not torch.is_tensor(voter_utilities)
             else voter_utilities
         )
-        self.voter_preferences = torch.from_numpy(
+        self.voter_ranked_order = torch.from_numpy(
             np.flip(np.argsort(voter_utilities, axis=-1), axis=-1).copy()
         )
 
-        self.voter_preferences_alt = torch.argsort(self.voter_preferences, dim=1)
+        self.voter_candidate_rank = torch.argsort(self.voter_ranked_order, dim=1)
 
-        self.positional_ballots = torch.zeros(
+        self.rank_candidate_count = torch.zeros(
             (self.num_candidates, self.num_candidates)
         )
         for i in range(self.num_candidates):
-            ith_place = self.voter_preferences[:, i]
+            ith_place = self.voter_ranked_order[:, i]
             counts = torch.bincount(ith_place, minlength=num_candidates)
-            self.positional_ballots[i] = counts
+            self.rank_candidate_count[i] = counts
 
         self.pairwise_comparison = torch.zeros(
             (self.num_candidates, self.num_candidates)
@@ -51,8 +46,8 @@ class ElectionData:
             for j in range(self.num_candidates):
                 if i == j:
                     continue
-                ith_place = self.voter_preferences_alt[:, i]
-                jth_place = self.voter_preferences_alt[:, j]
+                ith_place = self.voter_candidate_rank[:, i]
+                jth_place = self.voter_candidate_rank[:, j]
                 wins = torch.sum(ith_place < jth_place)
                 losses = torch.sum(jth_place < ith_place)
                 counts = wins - losses
@@ -97,7 +92,7 @@ class ElectionData:
             if vote_data == "ranking":
                 votes = [
                     (
-                        self.voter_preferences[voter, i],
+                        self.voter_ranked_order[voter, i],
                         1 - (i / k),
                     )
                     for i in range(k)
@@ -105,8 +100,8 @@ class ElectionData:
             else:
                 votes = [
                     (
-                        self.voter_preferences[voter, i],
-                        self.voter_utilities[voter, self.voter_preferences[voter, i]],
+                        self.voter_ranked_order[voter, i],
+                        self.voter_utilities[voter, self.voter_ranked_order[voter, i]],
                     )
                     for i in range(k)
                 ]
@@ -190,6 +185,19 @@ def utility_matrix_to_graph(U):
     )
 
 
+@dataclass
+class SetData:
+    X: torch.Tensor
+    index: torch.Tensor
+    winners: torch.Tensor
+
+    def to(self, device):
+        self.X = self.X.to(device)
+        self.index = self.index.to(device)
+        self.winners = self.winners.to(device)
+        return self
+
+
 class SetDataset(TorchDataset):
     def __init__(
         self,
@@ -213,7 +221,7 @@ class SetDataset(TorchDataset):
         voter_preferences_list = [x[0] for x in data]
         winners_list = [x[1] for x in data]
 
-        X = torch.concat(voter_preferences_list, dim=0)
+        X = torch.concat(voter_preferences_list, dim=0).to(torch.float32)
         index = [
             torch.full(size=(x.shape[0],), fill_value=n)
             for n, x in enumerate(voter_preferences_list)
@@ -222,4 +230,4 @@ class SetDataset(TorchDataset):
 
         y = torch.stack(winners_list)
 
-        return X.to(torch.float32), index, y
+        return SetData(X=X, index=index, winners=y)

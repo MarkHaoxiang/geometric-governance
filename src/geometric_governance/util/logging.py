@@ -1,14 +1,9 @@
 import os
 from typing import Any, Literal
 from datetime import datetime
-
 import wandb
-import numpy as np
 
-
-RangeOrValue = tuple[int, int] | int
-
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "../outputs")
+from geometric_governance.util.misc import OUTPUT_DIR
 
 
 class Logger:
@@ -50,6 +45,10 @@ class Logger:
             mode=self.mode,
         )
 
+    @property
+    def summary(self):
+        return wandb.run.summary
+
     def close(self):
         wandb.finish()
 
@@ -59,18 +58,3 @@ class Logger:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
-
-
-def get_value(v: RangeOrValue, rng: np.random.Generator) -> int:
-    if isinstance(v, tuple):
-        return rng.integers(low=v[0], high=v[1])
-    return v
-
-
-def get_max(v: RangeOrValue) -> int:
-    if isinstance(v, tuple):
-        return v[1]
-    elif isinstance(v, int):
-        return v
-    else:
-        raise ValueError("Invalid value type")
