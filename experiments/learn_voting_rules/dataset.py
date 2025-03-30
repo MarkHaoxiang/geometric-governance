@@ -23,7 +23,7 @@ def generate_rule_dataset(
     dataset_size: int,
     num_voters_range: RangeOrValue,
     num_candidates_range: RangeOrValue,
-    voting_rule: Literal["plurality", "borda", "copeland"],
+    voting_rule: str,
     representation: Literal["set", "graph"],
     seed: int,
 ):
@@ -74,7 +74,7 @@ def load_dataloader(
     num_voters: RangeOrValue,
     num_candidates: RangeOrValue,
     dataloader_batch_size: int,
-    voting_rule: Literal["plurality", "borda", "copeland"],
+    voting_rule: str,
     representation: Literal["set", "graph"],
     seed: int,
     recompute: bool = True,

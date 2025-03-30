@@ -3,6 +3,7 @@ import warnings
 
 import hydra
 import torch
+import torch.optim as o
 from tqdm import tqdm
 
 
@@ -69,10 +70,19 @@ def main(cfg):
     ).to(device=device)
     print(f"parameter_count: {get_parameter_count(model)}")
 
-    optim = torch.optim.Adam(model.parameters(), lr=cfg.learning_rate)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optim, T_max=cfg.train_num_epochs, eta_min=1e-4
+    optim = o.Adam(model.parameters(), lr=cfg.learning_rate)
+
+    warmup_epochs = 5
+    warmup_scheduler = o.lr_scheduler.LinearLR(
+        optim, start_factor=0.1, end_factor=1, total_iters=warmup_epochs
     )
+    main_scheduler = o.lr_scheduler.CosineAnnealingWarmRestarts(optim, T_0=5, T_mult=2)
+    scheduler = o.lr_scheduler.SequentialLR(
+        optim,
+        schedulers=[warmup_scheduler, main_scheduler],
+        milestones=[warmup_epochs],
+    )
+
     experiment_name = f"{cfg.representation}-election-{cfg.voting_rule}"
     logger = Logger(
         experiment_name=experiment_name,

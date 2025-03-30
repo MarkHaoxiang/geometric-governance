@@ -13,7 +13,7 @@ class Dataset(BaseModel):
 
 class Config(BaseModel):
     # Dataset parameters
-    voting_rule: Literal["plurality", "borda", "copeland"]
+    voting_rule: str
     dataloader_batch_size: int
     train_dataset: Dataset
     val_dataset: Dataset
@@ -35,3 +35,6 @@ class Config(BaseModel):
 
     # Model parameters
     representation: str
+
+    # Experiment utility
+    repeat_number: int | None = None

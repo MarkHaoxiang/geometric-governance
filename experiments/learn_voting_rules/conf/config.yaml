@@ -1,7 +1,7 @@
 defaults:
   - _self_
 
-voting_rule: copeland
+voting_rule: stv
 dataloader_batch_size: 128
 train_dataset:
   dataset_size: 100000
@@ -21,8 +21,8 @@ test_dataset:
   num_candidates: 20
   seed: 314159
   recompute: False
-train_num_epochs: 100
-train_iterations_per_epoch: 100
+train_num_epochs: 400
+train_iterations_per_epoch: 25
 learning_rate: 0.001
 clip_grad_norm: 1.0
 logging_checkpoint_interval: 5
