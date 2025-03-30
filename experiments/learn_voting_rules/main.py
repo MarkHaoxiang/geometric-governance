@@ -46,6 +46,10 @@ def run_evaluation(
 def main(cfg):
     cfg = omega_to_pydantic(cfg, Config)
 
+    # Override because DeepSets can't generalise
+    if cfg.representation == "set":
+        cfg.val_dataset.num_candidates = get_max(cfg.train_dataset.num_candidates)
+
     # Set up datasets
     train_dataloader, val_dataloader, test_dataloader = (
         load_dataloader(
@@ -196,6 +200,9 @@ def main(cfg):
 
     # Candidate number generalisation test
     if cfg.representation == "graph":
+        model = torch.load(
+            os.path.join(logger.checkpoint_dir, "model_best.pt"), weights_only=False
+        )
         test_loss, test_accuracy = run_evaluation(test_dataloader, model, cfg)
         logger.summary["test_loss"] = test_loss
         logger.summary["test_accuracy"] = test_accuracy

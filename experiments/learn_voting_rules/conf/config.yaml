@@ -12,7 +12,7 @@ train_dataset:
 val_dataset:
   dataset_size: 1000
   num_voters: 75
-  num_candidates: 10
+  num_candidates: 15
   seed: 16180
   recompute: False
 test_dataset:
