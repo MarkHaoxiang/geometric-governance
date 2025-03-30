@@ -1,11 +1,14 @@
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 from torch_geometric.nn import MessagePassing, MLP, DeepSetsAggregation
 from torch_geometric.data import Data
-from torch_scatter import scatter_log_softmax, scatter_add
+from torch_scatter import scatter_log_softmax, scatter_add, scatter_max
 
 
-class MessagePassingElectionLayer(MessagePassing):
+class MessagePassingLayer(MessagePassing):
     def __init__(
         self,
         edge_dim: int = 1,
@@ -35,39 +38,6 @@ class MessagePassingElectionLayer(MessagePassing):
         edge_features = torch.cat([x[from_node], x[to_node], edge_attr], dim=1)
         new_edge_attr = self.edge_utility_mlp(edge_features)
         new_edge_attr = edge_attr + new_edge_attr
-
-        return new_x, new_edge_attr
-
-    def message(self, x_i, x_j, edge_attr):
-        msg_features = torch.cat([x_i, x_j, edge_attr], dim=1)
-        return self.message_mlp(msg_features)
-
-
-# TODO mark for yash: I think MessagePassingStrategyLayer and MessagePassingElectionLayer are the same. Can we merge them?
-
-
-class MessagePassingStrategyLayer(MessagePassing):
-    def __init__(self, in_channels, edge_channels, out_channels):
-        super(MessagePassingStrategyLayer, self).__init__(aggr="add")
-
-        self.message_mlp = nn.Sequential(
-            nn.Linear(2 * in_channels + edge_channels, out_channels),
-            nn.ReLU(),
-            nn.Linear(out_channels, out_channels),
-        )
-
-        self.edge_utility_mlp = nn.Sequential(
-            nn.Linear(2 * in_channels + edge_channels, out_channels),
-            nn.ReLU(),
-            nn.Linear(out_channels, edge_channels),
-        )
-
-    def forward(self, x, edge_index, edge_attr):
-        new_x = self.propagate(edge_index, x=x, edge_attr=edge_attr)
-
-        from_node, to_node = edge_index
-        edge_features = torch.cat([x[from_node], x[to_node], edge_attr], dim=1)
-        new_edge_attr = self.edge_utility_mlp(edge_features)
 
         return new_x, new_edge_attr
 
@@ -118,7 +88,7 @@ class DeepSetStrategyModel(nn.Module):
     def forward(self, edge_attr, edge_index, candidate_idxs):
         # Updates the votes (each row in edge_attr) according to a DeepSet model,
         # aggregating votes made by the same voter
-        # Note that there is no inter-voter communication
+        # Note that there is no inter-voter co)mmunication
         # This module can be alternatively viewed as each voter voting,
         # but not truthfully (i.e. according to their true utility profile)
         # vote_sum = scatter_add(edge_attr, index=edge_index[0], dim=0)
@@ -166,7 +136,19 @@ class MLPStrategyModel(nn.Module):
         return votes.reshape(edge_attr.shape)
 
 
-class MessagePassingElectionModel(nn.Module):
+@dataclass
+class ElectionResult:
+    log_probs: torch.Tensor
+    winners: torch.Tensor
+
+
+class ElectionModel(nn.Module, ABC):
+    @abstractmethod
+    def election(self, data) -> ElectionResult:
+        raise NotImplementedError()
+
+
+class MessagePassingElectionModel(ElectionModel):
     def __init__(
         self,
         edge_dim: int = 1,
@@ -186,9 +168,7 @@ class MessagePassingElectionModel(nn.Module):
         self.convs = torch.nn.ModuleList()
         for _ in range(num_layers):
             self.convs.append(
-                MessagePassingElectionLayer(
-                    edge_dim=edge_emb_dim, node_dim=node_emb_dim
-                )
+                MessagePassingLayer(edge_dim=edge_emb_dim, node_dim=node_emb_dim)
             )
 
     def forward(self, data: Data):
@@ -204,8 +184,15 @@ class MessagePassingElectionModel(nn.Module):
         out = scatter_log_softmax(logits, data.batch[data.candidate_idxs])
         return out
 
+    def election(self, data):
+        log_probs = self(data)
+        winner_idxs = scatter_max(log_probs, data.batch[data.candidate_idxs])[1]
+        winners = torch.zeros_like(log_probs)
+        winners[winner_idxs] = 1
+        return ElectionResult(log_probs, winners)
 
-class DeepSetElectionModel(nn.Module):
+
+class DeepSetElectionModel(ElectionModel):
     def __init__(self, num_candidates: int, embedding_size: int = 128):
         super().__init__()
 
@@ -222,4 +209,30 @@ class DeepSetElectionModel(nn.Module):
 
     def forward(self, x, index):
         scores = self.deepset(x, index=index)
-        return scores
+        return nn.functional.log_softmax(scores, dim=-1)
+
+    def election(self, data):
+        log_probs = self(data.X, data.index)
+        winner_idxs = torch.max(log_probs, dim=-1)[1]
+        winners = torch.zeros_like(log_probs)
+        winners[torch.arange(winners.shape[0]), winner_idxs] = 1
+        return ElectionResult(log_probs, winners)
+
+
+def create_election_model(
+    representation: str, num_candidates: int | None = None
+) -> ElectionModel:
+    election_model: ElectionModel
+    match representation:
+        case "graph":
+            election_model = MessagePassingElectionModel(
+                node_emb_dim=256, edge_emb_dim=64, num_layers=4, edge_dim=1
+            )
+        case "set":
+            assert num_candidates is not None, ""
+            election_model = DeepSetElectionModel(
+                num_candidates=num_candidates, embedding_size=155
+            )
+        case _:
+            raise ValueError(f"Unknown model for {representation}")
+    return election_model
