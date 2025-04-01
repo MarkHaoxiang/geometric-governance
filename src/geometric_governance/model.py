@@ -4,9 +4,9 @@ from typing import Literal
 
 import torch
 import torch.nn as nn
-from torch_geometric.nn import MessagePassing, MLP, DeepSetsAggregation
 from torch_geometric.data import Data
-from torch_scatter import scatter_log_softmax, scatter_add, scatter_max
+from torch_geometric.nn import MLP, DeepSetsAggregation, MessagePassing
+from torch_scatter import scatter_add, scatter_log_softmax, scatter_max
 
 
 class MessagePassingLayer(MessagePassing):
@@ -14,8 +14,9 @@ class MessagePassingLayer(MessagePassing):
         self,
         edge_dim: int = 1,
         node_dim: int = 32,
+        aggr="add",
     ):
-        super().__init__(aggr="add")
+        super().__init__(aggr=aggr)
 
         self.message_mlp = nn.Sequential(
             nn.Linear(2 * node_dim + edge_dim, node_dim),
@@ -156,6 +157,7 @@ class MessagePassingElectionModel(ElectionModel):
         node_emb_dim: int = 32,
         edge_emb_dim: int = 8,
         num_layers: int = 4,
+        aggr="add",
     ):
         super().__init__()
         in_dim = 2
@@ -169,7 +171,9 @@ class MessagePassingElectionModel(ElectionModel):
         self.convs = torch.nn.ModuleList()
         for _ in range(num_layers):
             self.convs.append(
-                MessagePassingLayer(edge_dim=edge_emb_dim, node_dim=node_emb_dim)
+                MessagePassingLayer(
+                    edge_dim=edge_emb_dim, node_dim=node_emb_dim, aggr=aggr
+                )
             )
 
     def forward(self, data: Data):
