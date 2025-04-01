@@ -40,7 +40,7 @@ dev = [
 allow-direct-references = true
 
 [tool.uv.workspace]
-members = [".", "experiments/learn_voting_rules"]
+members = [".", "experiments/*"]
 
 [tool.uv.sources]
 geometric_governance = { workspace = true }

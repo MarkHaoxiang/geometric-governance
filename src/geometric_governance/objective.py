@@ -71,16 +71,29 @@ def compute_single_transferrable_vote(election_data: ElectionData) -> torch.Tens
     return remaining_candidates.to(dtype=torch.float32)
 
 
-def compute_utilitarian(election_data: ElectionData) -> torch.Tensor:
-    return election_data.voter_utilities.sum(dim=0)
+def compute_utilitarian(
+    election_data: ElectionData, get_winners: bool = False
+) -> torch.Tensor:
+    out = election_data.voter_utilities.sum(dim=0)
+    return get_scoring_function_winners(out) if get_winners else out
 
 
-def compute_nash(election_data: ElectionData) -> torch.Tensor:
-    return election_data.voter_utilities.prod(dim=0)
+def compute_nash(
+    election_data: ElectionData, get_winners: bool = False, log_trick: bool = True
+) -> torch.Tensor:
+    if log_trick:
+        out = torch.log(election_data.voter_utilities + 1e-10)
+        out = out.sum(dim=0)
+    else:
+        out = election_data.voter_utilities.prod(dim=0)
+    return get_scoring_function_winners(out) if get_winners else out
 
 
-def compute_rawlsian(election_data: ElectionData) -> torch.Tensor:
-    return election_data.voter_utilities.min(dim=0).values
+def compute_rawlsian(
+    election_data: ElectionData, get_winners: bool = False
+) -> torch.Tensor:
+    out = election_data.voter_utilities.min(dim=0).values
+    return get_scoring_function_winners(out) if get_winners else out
 
 
 VotingRulesRegistry = {

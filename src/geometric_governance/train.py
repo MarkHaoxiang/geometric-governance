@@ -11,6 +11,14 @@ def compute_rule_loss(
     return -(election.log_probs * winners).sum() / batch_size
 
 
+def compute_welfare_loss(
+    election: ElectionResult, welfare: torch.Tensor, batch_size: int | None = None
+):
+    assert election.log_probs.shape == welfare.shape
+    batch_size = 1 if batch_size is None else batch_size
+    return -(torch.exp(election.log_probs) * welfare).sum() / batch_size
+
+
 def compute_monotonicity_loss(
     election: ElectionResult,
     data,

@@ -1,0 +1,34 @@
+defaults:
+  - _self_
+
+welfare_rule: nash
+vote_data: ranking
+dataloader_batch_size: 256
+train_dataset:
+  dataset_size: 100000
+  num_voters: [3, 50]
+  num_candidates: [2, 10]
+  seed: 42
+  recompute: False
+val_dataset:
+  dataset_size: 1280
+  num_voters: 75
+  num_candidates: 15
+  seed: 16180
+  recompute: False
+test_dataset:
+  dataset_size: 1280
+  num_voters: 100
+  num_candidates: 20
+  seed: 314159
+  recompute: False
+train_num_epochs: 400
+train_iterations_per_epoch: 25
+learning_rate: 0.0003
+clip_grad_norm: 1.0
+logging_checkpoint_interval: 5
+logging_mode: online
+monotonicity_loss_enable: false
+monotonicity_loss_batch_size: 32
+welfare_loss_enable: true
+model_size: small
