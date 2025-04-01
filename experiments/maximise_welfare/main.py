@@ -75,6 +75,7 @@ def main(cfg):
         representation="graph",
         num_candidates=get_max(cfg.train_dataset.num_candidates),
         model_size=cfg.model_size,
+        aggr=cfg.model_aggr,
     ).to(device=device)
     print(f"parameter_count: {get_parameter_count(model)}")
 
@@ -92,7 +93,9 @@ def main(cfg):
     )
 
     method = "welfare" if cfg.welfare_loss_enable else "rule"
-    experiment_name = f"{cfg.vote_data}-{cfg.welfare_rule}-{method}-{cfg.model_size}"
+    experiment_name = (
+        f"{cfg.vote_data}-{cfg.welfare_rule}-{method}-{cfg.model_size}-{cfg.model_aggr}"
+    )
     logger = Logger(
         experiment_name=experiment_name,
         config=cfg,

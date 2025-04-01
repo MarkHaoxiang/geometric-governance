@@ -1,8 +1,8 @@
 defaults:
   - _self_
 
-welfare_rule: nash
-vote_data: ranking
+welfare_rule: rawlsian
+vote_data: utility
 dataloader_batch_size: 256
 train_dataset:
   dataset_size: 100000
@@ -22,7 +22,7 @@ test_dataset:
   num_candidates: 20
   seed: 314159
   recompute: False
-train_num_epochs: 400
+train_num_epochs: 560
 train_iterations_per_epoch: 25
 learning_rate: 0.0003
 clip_grad_norm: 1.0
@@ -32,3 +32,4 @@ monotonicity_loss_enable: false
 monotonicity_loss_batch_size: 32
 welfare_loss_enable: true
 model_size: small
+model_aggr: sum

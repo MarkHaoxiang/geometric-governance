@@ -14,7 +14,7 @@ class MessagePassingLayer(MessagePassing):
         self,
         edge_dim: int = 1,
         node_dim: int = 32,
-        aggr="add",
+        aggr: str = "sum",
     ):
         super().__init__(aggr=aggr)
 
@@ -157,7 +157,7 @@ class MessagePassingElectionModel(ElectionModel):
         node_emb_dim: int = 32,
         edge_emb_dim: int = 8,
         num_layers: int = 4,
-        aggr="add",
+        aggr: str = "add",
     ):
         super().__init__()
         in_dim = 2
@@ -228,16 +228,17 @@ def create_election_model(
     representation: str,
     num_candidates: int | None = None,
     model_size: Literal["small", "medium"] = "small",
+    aggr: str = "sum",
 ) -> ElectionModel:
     model: ElectionModel
     match representation, model_size:
         case "graph", "small":
             model = MessagePassingElectionModel(
-                node_emb_dim=80, edge_emb_dim=20, num_layers=4, edge_dim=1
+                node_emb_dim=80, edge_emb_dim=20, num_layers=4, edge_dim=1, aggr=aggr
             )
         case "graph", "medium":
             model = MessagePassingElectionModel(
-                node_emb_dim=256, edge_emb_dim=64, num_layers=4, edge_dim=1
+                node_emb_dim=256, edge_emb_dim=64, num_layers=4, edge_dim=1, aggr=aggr
             )
         case "set", "small":
             assert num_candidates is not None, ""

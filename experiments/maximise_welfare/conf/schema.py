@@ -37,6 +37,7 @@ class Config(BaseModel):
 
     # Model parameters
     model_size: Literal["small", "large"]
+    model_aggr: str
 
     # Experiment utility
     repeat_number: int | None = None
