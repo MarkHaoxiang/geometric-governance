@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.data import Data
 from torch_geometric.nn import MLP, DeepSetsAggregation, MessagePassing
-from torch_scatter import scatter_add, scatter_log_softmax, scatter_max
+from torch_scatter import scatter_add, scatter_log_softmax, scatter_softmax, scatter_max
 
 
 class MessagePassingLayer(MessagePassing):
@@ -53,7 +53,7 @@ class DeepSetStrategyModel(nn.Module):
         self,
         edge_dim: int = 1,
         emb_dim: int = 32,
-        num_layers: int = 1,
+        num_layers: int = 2,
     ):
         super().__init__()
         self.emb_dim = emb_dim
@@ -98,25 +98,25 @@ class DeepSetStrategyModel(nn.Module):
         # normalised_votes = edge_attr / vote_sum
         # hidden_edge_attr = self.vote_to_hidden(normalised_votes)
 
+        edge_index = edge_index[0]
         hidden_edge_attr = self.vote_to_hidden(edge_attr)
 
         new_edge_attr = hidden_edge_attr
         for transform, update in zip(self.transforms, self.updates):
             transformed_edge_attr = transform(new_edge_attr)
-            index = (
-                edge_index[0].unsqueeze(-1).expand(-1, transformed_edge_attr.size(-1))
-            )
+            index = edge_index.unsqueeze(-1).expand(-1, transformed_edge_attr.size(-1))
             sum_voter_scores = scatter_add(transformed_edge_attr, index, dim=0)
             aggr_edge_attr = torch.cat(
-                [new_edge_attr, sum_voter_scores[edge_index[0]]], dim=-1
+                [new_edge_attr, sum_voter_scores[edge_index]], dim=-1
             )
             # aggr_edge_attr = new_edge_attr + sum_voter_scores[edge_index[0]]
             new_edge_attr = update(aggr_edge_attr)
 
         new_edge_attr = torch.cat([hidden_edge_attr, new_edge_attr], dim=-1)
-        votes = torch.nn.functional.tanh(self.hidden_to_vote(new_edge_attr))
 
-        return edge_attr + votes
+        votes = self.hidden_to_vote(new_edge_attr)
+        votes = scatter_softmax(votes, edge_index.unsqueeze(-1), dim=0)
+        return votes
 
 
 class MLPStrategyModel(nn.Module):
@@ -128,6 +128,7 @@ class MLPStrategyModel(nn.Module):
             nn.Linear(emb_dim, emb_dim),
             nn.LeakyReLU(),
             nn.Linear(emb_dim, num_candidates),
+            nn.Softmax(),
         )
         self.num_candidates = num_candidates
 
