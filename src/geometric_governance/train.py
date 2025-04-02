@@ -1,5 +1,6 @@
 from typing import Literal
 import torch
+import torch.optim as o
 from geometric_governance.model import ElectionResult
 
 
@@ -47,3 +48,30 @@ def compute_monotonicity_loss(
         ).mean()
     loss /= batch_size
     return loss
+
+
+def make_optim_and_scheduler(
+    model: torch.nn.Module,
+    lr: float,
+    warmup_epochs: int = 5,
+    warmup_start: float = 0.1,
+    warmup_end: float = 1,
+    T_0: int = 5,
+    T_mult: int = 2,
+):
+    optim = o.Adam(model.parameters(), lr=lr)
+    warmup_scheduler = o.lr_scheduler.LinearLR(
+        optim,
+        start_factor=warmup_start,
+        end_factor=warmup_end,
+        total_iters=warmup_epochs,
+    )
+    main_scheduler = o.lr_scheduler.CosineAnnealingWarmRestarts(
+        optim, T_0=T_0, T_mult=T_mult
+    )
+    scheduler = o.lr_scheduler.SequentialLR(
+        optim,
+        schedulers=[warmup_scheduler, main_scheduler],
+        milestones=[warmup_epochs],
+    )
+    return optim, scheduler

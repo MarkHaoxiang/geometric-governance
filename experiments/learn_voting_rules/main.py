@@ -14,7 +14,11 @@ from geometric_governance.util import (
     omega_to_pydantic,
     cuda as device,
 )
-from geometric_governance.train import compute_rule_loss, compute_monotonicity_loss
+from geometric_governance.train import (
+    compute_rule_loss,
+    compute_monotonicity_loss,
+    make_optim_and_scheduler,
+)
 from geometric_governance.model import ElectionModel, create_election_model
 from conf.schema import Config
 from dataset import Dataloader, load_dataloader
@@ -75,18 +79,7 @@ def main(cfg):
     ).to(device=device)
     print(f"parameter_count: {get_parameter_count(model)}")
 
-    optim = o.Adam(model.parameters(), lr=cfg.learning_rate)
-
-    warmup_epochs = 5
-    warmup_scheduler = o.lr_scheduler.LinearLR(
-        optim, start_factor=0.1, end_factor=1, total_iters=warmup_epochs
-    )
-    main_scheduler = o.lr_scheduler.CosineAnnealingWarmRestarts(optim, T_0=5, T_mult=2)
-    scheduler = o.lr_scheduler.SequentialLR(
-        optim,
-        schedulers=[warmup_scheduler, main_scheduler],
-        milestones=[warmup_epochs],
-    )
+    optim, scheduler = make_optim_and_scheduler(model, lr=cfg.learning_rate)
 
     experiment_name = (
         f"{cfg.representation}-election-{cfg.voting_rule}-{cfg.model_size}"

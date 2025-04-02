@@ -1,27 +1,34 @@
 defaults:
   - _self_
 
-welfare_rule: nash
-vote_data: utility
+welfare_rule: utilitarian
 dataloader_batch_size: 256
 train_dataset:
   dataset_size: 100000
   num_voters: [3, 50]
   num_candidates: [2, 10]
   seed: 42
-  recompute: False
+  shuffle: true
+  recompute: false
 val_dataset:
   dataset_size: 1280
   num_voters: 75
   num_candidates: 15
   seed: 16180
-  recompute: False
+  shuffle: false
+  recompute: false
 test_dataset:
   dataset_size: 1280
   num_voters: 100
   num_candidates: 20
   seed: 314159
-  recompute: False
+  shuffle: false
+  recompute: false
+election_model:
+  use_manual_election: false
+  size: small
+  from_pretrained: utilitarian_small
+  freeze_weights: true
 train_num_epochs: 560
 train_iterations_per_epoch: 25
 learning_rate: 0.0003
@@ -30,6 +37,5 @@ logging_checkpoint_interval: 5
 logging_mode: online
 monotonicity_loss_enable: false
 monotonicity_loss_batch_size: 32
-welfare_loss_enable: true
-model_size: small
-model_aggr: sum
+strategy_module_enable: false
+strategy_p: 0.2

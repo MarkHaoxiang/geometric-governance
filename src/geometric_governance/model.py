@@ -87,7 +87,7 @@ class DeepSetStrategyModel(nn.Module):
             nn.Linear(emb_dim, 1),
         )
 
-    def forward(self, edge_attr, edge_index, candidate_idxs):
+    def forward(self, edge_attr, edge_index):
         # Updates the votes (each row in edge_attr) according to a DeepSet model,
         # aggregating votes made by the same voter
         # Note that there is no inter-voter co)mmunication
