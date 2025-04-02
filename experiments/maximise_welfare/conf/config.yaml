@@ -1,7 +1,7 @@
 defaults:
   - _self_
 
-welfare_rule: nash
+welfare_rule: utilitarian
 vote_data: utility
 dataloader_batch_size: 256
 train_dataset:
@@ -22,12 +22,12 @@ test_dataset:
   num_candidates: 20
   seed: 314159
   recompute: False
-train_num_epochs: 560
+train_num_epochs: 400
 train_iterations_per_epoch: 25
 learning_rate: 0.0003
 clip_grad_norm: 1.0
 logging_checkpoint_interval: 5
-logging_mode: online
+logging_mode: disabled
 monotonicity_loss_enable: false
 monotonicity_loss_batch_size: 32
 welfare_loss_enable: true

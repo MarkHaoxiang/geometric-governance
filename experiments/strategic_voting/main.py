@@ -31,13 +31,51 @@ from conf.schema import Config
 from dataset import Dataloader, load_dataloader
 
 
-def run_evaluation(dataloader: Dataloader, model: ElectionModel, cfg: Config) -> float:
-    model.eval()
+def run_evaluation(
+    dataloader: Dataloader, election_model: ElectionModel, strategy_model, cfg: Config
+) -> float:
+    election_model.eval()
+    strategy_model.eval()
     mean_welfare = 0.0
     with torch.no_grad():
         for data_ in dataloader:
             data = data_.to(device=device)
-            election = model.election(data)
+
+            # Run strategy model
+            voters = (~data.candidate_idxs).nonzero()
+            voter_to_batch = data.batch[voters]
+
+            truthful_votes = data.edge_attr
+            strategic_votes = strategy_model(data.edge_attr, data.edge_index)
+
+            strategic_voters = (
+                torch.rand_like(voters, dtype=torch.float) < cfg.strategy_p
+            )
+
+            rand_indices = torch.stack(
+                [
+                    torch.where(voter_to_batch == batch)[0][
+                        torch.randint(0, (voter_to_batch == batch).sum(), (1,))
+                    ].squeeze()
+                    for batch in range(data.batch[-1] + 1)
+                ]
+            )
+            sampled_voters = voters[rand_indices]
+            strategic_voters[rand_indices] = True
+
+            strategy_train_mask = torch.isin(data.edge_index[0], sampled_voters)
+            strategy_train_mask = strategy_train_mask.unsqueeze(-1)
+            strategic_votes_mask = torch.isin(
+                data.edge_index[0], strategic_voters.nonzero()
+            ).unsqueeze(-1)
+
+            resulting_votes = torch.where(
+                strategic_votes_mask, strategic_votes, truthful_votes
+            )
+            data.edge_attr = resulting_votes
+
+            # Run election model
+            election = election_model.election(data)
             welfare = (
                 torch.exp(election.log_probs) * data.welfare
             ).sum().item() / cfg.dataloader_batch_size
@@ -122,10 +160,11 @@ def main(cfg):
         strategy_model = NoStrategy()
 
     # Optimiser and Scheduler
-    if (
+    is_training_election = (
         not cfg.election_model.freeze_weights
         and not cfg.election_model.use_manual_election
-    ):
+    )
+    if is_training_election:
         e_optim, e_scheduler = make_optim_and_scheduler(
             election_model, lr=cfg.learning_rate
         )
@@ -136,7 +175,7 @@ def main(cfg):
 
     freeze = "freeze" if cfg.election_model.freeze_weights else "train"
     experiment_name = (
-        f"{cfg.welfare_rule}-{cfg.election_model.size}-{freeze}-{model_name}"
+        f"strategy-{cfg.welfare_rule}-{cfg.election_model.size}-{freeze}-{model_name}"
     )
     logger = Logger(
         experiment_name=experiment_name,
@@ -145,9 +184,8 @@ def main(cfg):
     )
     logger.begin()
     with tqdm(range(cfg.train_num_epochs)) as pbar:
-        best_validation_welfare: float = -math.inf
-
         election_model.train()
+        strategy_model.train()
         for epoch in range(cfg.train_num_epochs):
             # Train
             train_loss = 0
@@ -245,8 +283,8 @@ def main(cfg):
                     s_optim.step()
                     s_scheduler.step()
 
-                    data = data_strategy
                     train_strategy_loss += strategy_loss.item()
+                    data.edge_attr = data_strategy.edge_attr.detach()
 
                 election = election_model.election(data)
 
@@ -272,10 +310,7 @@ def main(cfg):
                 train_loss += election_loss.item()
 
                 # Update weights
-                if (
-                    not cfg.election_model.freeze_weights
-                    and not cfg.election_model.use_manual_election
-                ):
+                if is_training_election:
                     e_optim.zero_grad()
                     election_loss.backward()
                     torch.nn.utils.clip_grad_norm_(
@@ -298,10 +333,16 @@ def main(cfg):
             train_monotonicity_loss /= cfg.train_iterations_per_epoch
 
             if epoch % cfg.logging_checkpoint_interval == 0:
-                torch.save(
-                    election_model,
-                    os.path.join(logger.checkpoint_dir, f"model_{epoch}.pt"),
-                )
+                if is_training_election:
+                    torch.save(
+                        election_model,
+                        os.path.join(logger.checkpoint_dir, f"election_{epoch}.pt"),
+                    )
+                if cfg.strategy_module_enable:
+                    torch.save(
+                        strategy_model,
+                        os.path.join(logger.checkpoint_dir, f"strategy_{epoch}.pt"),
+                    )
 
             logger.log(
                 {
@@ -313,18 +354,9 @@ def main(cfg):
             )
 
             # Validation
-            election_model.eval()
-            val_welfare = run_evaluation(val_dataloader, election_model, cfg)
-
-            if val_welfare > best_validation_welfare:
-                print(f"New best welfare: {val_welfare}")
-                logger.summary["best_validation_epoch"] = epoch
-                logger.summary["best_validation_welfare"] = val_welfare
-                torch.save(
-                    election_model,
-                    os.path.join(logger.checkpoint_dir, "model_best.pt"),
-                )
-                best_validation_welfare = val_welfare
+            val_welfare = run_evaluation(
+                val_dataloader, election_model, strategy_model, cfg
+            )
 
             logger.log(
                 {
@@ -343,13 +375,9 @@ def main(cfg):
             pbar.update(1)
 
     # Candidate number generalisation test
-    election_model = torch.load(
-        os.path.join(logger.checkpoint_dir, "model_best.pt"), weights_only=False
-    )
-    test_welfare, test_accuracy = run_evaluation(test_dataloader, election_model, cfg)
+    test_welfare = run_evaluation(test_dataloader, election_model, strategy_model, cfg)
     logger.summary["test_loss"] = test_welfare
-    logger.summary["test_accuracy"] = test_accuracy
-    print(f"Test welfare: {test_welfare} Test accuracy: {test_accuracy}")
+    print(f"Test welfare: {test_welfare}")
     logger.commit()
     logger.close()
 
