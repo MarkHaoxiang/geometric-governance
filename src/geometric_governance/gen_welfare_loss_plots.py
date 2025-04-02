@@ -14,11 +14,25 @@ utility_utilitarian_rule_small_sum = ["olgo7t2w", "3absmnb8", "xw5o00st", "i4hr4
 utility_nash_rule_small_sum = ["2tixdk3p", "nce36qp1", "rc0ra7ri", "ac93yplx", "vkv8eg57"], "Nash (Rule Loss)"
 utility_rawlsian_rule_small_sum = ["wobn8x24", "jexom0or", "pmkx6me5", "pnakfb4g", "rie6b3pz"], "Rawlsian (Rule Loss)"
 
+
+ranking_utilitarian_welfare_small_sum = ["e633j43c", "dgdxw04n", "0jcuxn52", "059jax08", "58w1v0tn"], "Utilitarian (Welfare Loss)"
+ranking_nash_welfare_small_sum = ["d7e0nxa9", "f90638a1", "qlievumy", "9uzo3672", "y45yhnqw"], "Nash (Welfare Loss)"
+ranking_rawlsian_welfare_small_sum = ["dk8picj4", "zz2iwh4o", "py1qsmsj", "y9pt4sdk", "hcq84p0m"], "Rawlsian (Welfare Loss)"
+
+ranking_utilitarian_rule_small_sum = ["wbmj8opt", "9cxehvgw", "pxw811q1", "3b5ag1e2", "gv5337uc"], "Utilitarian (Rule Loss)"
+ranking_nash_rule_small_sum = ["gyb8fxsr", "ab9pvxu4", "7loino67", "1y4pshou", "e8nr6rc2"], "Nash (Rule Loss)"
+ranking_rawlsian_rule_small_sum = ["0gqzx2gl", "262ydrax", "nqyn8mfb", "ffo4hnnz", "pzxjxddz"], "Rawlsian (Rule Loss)"
+
 project_name = "geometric-governance"
 to_plot = [
     utility_utilitarian_welfare_small_sum, utility_nash_welfare_small_sum, utility_rawlsian_welfare_small_sum,
     utility_utilitarian_rule_small_sum, utility_nash_rule_small_sum, utility_rawlsian_rule_small_sum
 ]
+to_plot = [
+    ranking_utilitarian_welfare_small_sum, ranking_nash_welfare_small_sum, ranking_rawlsian_welfare_small_sum,
+    ranking_utilitarian_rule_small_sum, ranking_nash_rule_small_sum, ranking_rawlsian_rule_small_sum
+]
+
 
 fig, axs = plt.subplots(2, 3, figsize=(12, 8), sharex=True)
 
