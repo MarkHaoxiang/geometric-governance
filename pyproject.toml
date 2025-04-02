@@ -21,6 +21,7 @@ dependencies = [
     "tqdm>=4.67.1",
     "wandb>=0.19.8",
     "pandas >= 2.2.3",
+    "jupyterlab >= 4.3.6",
     # Manually install torch_scatter
     # uv pip install torch-scatter -f https://data.pyg.org/whl/torch-2.5.0+cu124.html
 ]
