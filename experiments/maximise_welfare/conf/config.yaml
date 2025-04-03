@@ -27,7 +27,7 @@ train_iterations_per_epoch: 25
 learning_rate: 0.0003
 clip_grad_norm: 1.0
 logging_checkpoint_interval: 5
-logging_mode: disabled
+logging_mode: online
 monotonicity_loss_enable: false
 monotonicity_loss_batch_size: 32
 welfare_loss_enable: true
