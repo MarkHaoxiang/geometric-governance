@@ -27,7 +27,7 @@ test_dataset:
 election_model:
   use_manual_election: false
   size: small
-  from_pretrained: utilitarian_small_robust_2
+  from_pretrained: utilitarian_small_robust_5
   freeze_weights: true
 train_num_epochs: 400
 train_iterations_per_epoch: 25
