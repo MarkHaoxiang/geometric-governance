@@ -19,6 +19,11 @@ project_name = "geometric-governance"
 to_plot = [utilitarian, nash, rawlsian_long, rawlsian_min]
 to_plot = [utilitarian_monotinicity, nash_monotonicity, rawlsian_long_monotonicity, rawlsian_min_monotonicity]
 
+def moving_average(x, window_size):
+    return np.convolve(x, np.ones(window_size), 'valid') / window_size 
+
+window_size = 15 # Number of epochs to calculate moving average over
+
 fig, axs = plt.subplots(2, 2, figsize=(12, 8), sharex=True)
 
 for i, plot in enumerate(to_plot):
@@ -39,9 +44,11 @@ for i, plot in enumerate(to_plot):
 
     color = "blue"
     mean = np.mean(validation_accuracies, axis=0)
+    mean = moving_average(mean, window_size)
     ax.plot(np.arange(num_epochs), mean, color=color, linewidth=1.0)
 
     std = np.std(validation_accuracies, axis=0)
+    std = moving_average(std, window_size)
     ax.fill_between(
         np.arange(num_epochs),
         mean + std,
