@@ -1,7 +1,8 @@
-from typing import Literal
+from typing import Literal, Callable
 from dataclasses import dataclass
 
 import numpy as np
+from numpy import typing as npt
 import torch
 from torch.utils.data import Dataset as TorchDataset
 
@@ -122,7 +123,7 @@ class ElectionData:
         return data
 
 
-def generate_synthetic_election(
+def generate_impartial_dirichlet_election(
     num_voters: int,
     num_candidates: int,
     rng: np.random.Generator | None = None,
@@ -134,6 +135,38 @@ def generate_synthetic_election(
     voter_utilities = rng.dirichlet(
         alpha=(utility_profile_alpha,) * num_candidates, size=num_voters
     )
+
+    return ElectionData(
+        num_voters=num_voters,
+        num_candidates=num_candidates,
+        voter_utilities=voter_utilities,
+    )
+
+
+def generate_spatial_election(
+    num_voters: int,
+    num_candidates: int,
+    rng: np.random.Generator | None = None,
+    k: int = 3,
+    normalise: bool = True,
+    f: Callable[
+        [npt.NDArray[np.float32]], npt.NDArray[np.float32]
+    ] = lambda x: np.maximum(0, 1 - x),
+):
+    if rng is None:
+        rng = np.random.default_rng()
+    voters = rng.uniform(low=0.0, high=1.0, size=(num_voters, k))
+    candidates = rng.uniform(low=0.0, high=1.0, size=(num_candidates, k))
+
+    diff = voters[:, np.newaxis, :] - candidates[np.newaxis, :, :]
+    dist_matrix = np.linalg.norm(diff, axis=-1)
+
+    voter_utilities = f(dist_matrix)
+    if normalise:
+        # Normalise the utilities of each voter to sum to 1
+        voter_utilities = voter_utilities / np.sum(
+            voter_utilities, axis=-1, keepdims=True
+        )
 
     return ElectionData(
         num_voters=num_voters,
