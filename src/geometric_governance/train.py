@@ -1,7 +1,17 @@
 from typing import Literal
 import torch
 import torch.optim as o
+from pydantic import BaseModel
 from geometric_governance.model import ElectionResult
+
+
+class TrainingSchema(BaseModel):
+    num_epochs: int
+    iterations_per_epoch: int
+    learning_rate: float
+    learning_rate_warmup_epochs: int
+    learning_rate_warm_restart: bool
+    clip_grad_norm: float
 
 
 def compute_rule_loss(

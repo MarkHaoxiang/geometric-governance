@@ -127,10 +127,10 @@ def main(cfg):
         for dataset in (cfg.train_dataset, cfg.val_dataset, cfg.test_dataset)
     )
 
-    if cfg.train_iterations_per_epoch > len(train_dataloader):
-        cfg.train_iterations_per_epoch = len(train_dataloader)
+    if cfg.train.iterations_per_epoch > len(train_dataloader):
+        cfg.train.iterations_per_epoch = len(train_dataloader)
         warnings.warn(
-            f"train_iterations_per_epoch override to {cfg.train_iterations_per_epoch} as it is larger than the dataset size"
+            f"train_iterations_per_epoch override to {cfg.train.iterations_per_epoch} as it is larger than the dataset size"
         )
 
     # Election model definition
@@ -166,11 +166,19 @@ def main(cfg):
     )
     if is_training_election:
         e_optim, e_scheduler = make_optim_and_scheduler(
-            election_model, lr=cfg.learning_rate
+            election_model,
+            lr=cfg.train.learning_rate,
+            total_epochs=cfg.train.num_epochs,
+            warmup_epochs=cfg.train.learning_rate_warmup_epochs,
+            warm_restart=cfg.train.learning_rate_warm_restart,
         )
     if cfg.strategy_module_enable:
         s_optim, s_scheduler = make_optim_and_scheduler(
-            strategy_model, lr=cfg.learning_rate
+            strategy_model,
+            lr=cfg.train.learning_rate,
+            total_epochs=cfg.train.num_epochs,
+            warmup_epochs=cfg.train.learning_rate_warmup_epochs,
+            warm_restart=cfg.train.learning_rate_warm_restart,
         )
 
     freeze = "freeze" if cfg.election_model.freeze_weights else "train"
@@ -183,10 +191,10 @@ def main(cfg):
         mode=cfg.logging_mode,
     )
     logger.begin()
-    with tqdm(range(cfg.train_num_epochs)) as pbar:
+    with tqdm(range(cfg.train.num_epochs)) as pbar:
         election_model.train()
         strategy_model.train()
-        for epoch in range(cfg.train_num_epochs):
+        for epoch in range(cfg.train.num_epochs):
             # Train
             train_loss = 0
             train_welfare_loss = 0
@@ -198,7 +206,7 @@ def main(cfg):
 
             train_iter = iter(train_dataloader)
 
-            for _ in range(cfg.train_iterations_per_epoch):
+            for _ in range(cfg.train.iterations_per_epoch):
                 election_loss = 0
                 data = next(train_iter).to(device)
 
@@ -278,7 +286,7 @@ def main(cfg):
                     s_optim.zero_grad()
                     strategy_loss.backward()
                     torch.nn.utils.clip_grad_norm_(
-                        strategy_model.parameters(), cfg.clip_grad_norm
+                        strategy_model.parameters(), cfg.train.clip_grad_norm
                     )
                     s_optim.step()
                     s_scheduler.step()
@@ -314,7 +322,7 @@ def main(cfg):
                     e_optim.zero_grad()
                     election_loss.backward()
                     torch.nn.utils.clip_grad_norm_(
-                        election_model.parameters(), cfg.clip_grad_norm
+                        election_model.parameters(), cfg.train.clip_grad_norm
                     )
                     e_optim.step()
                     e_scheduler.step()
@@ -326,11 +334,11 @@ def main(cfg):
                     ).sum() / cfg.dataloader_batch_size
                     train_welfare += welfare.item()
 
-            train_loss /= cfg.train_iterations_per_epoch
-            train_strategy_loss /= cfg.train_iterations_per_epoch
-            train_welfare_loss /= cfg.train_iterations_per_epoch
-            train_welfare /= cfg.train_iterations_per_epoch
-            train_monotonicity_loss /= cfg.train_iterations_per_epoch
+            train_loss /= cfg.train.iterations_per_epoch
+            train_strategy_loss /= cfg.train.iterations_per_epoch
+            train_welfare_loss /= cfg.train.iterations_per_epoch
+            train_welfare /= cfg.train.iterations_per_epoch
+            train_monotonicity_loss /= cfg.train.iterations_per_epoch
 
             if epoch % cfg.logging_checkpoint_interval == 0:
                 if is_training_election:

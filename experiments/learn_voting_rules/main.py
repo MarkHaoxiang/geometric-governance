@@ -3,7 +3,6 @@ import warnings
 
 import hydra
 import torch
-import torch.optim as o
 from tqdm import tqdm
 
 
@@ -65,7 +64,7 @@ def main(cfg):
         for dataset in (cfg.train_dataset, cfg.val_dataset, cfg.test_dataset)
     )
 
-    if cfg.train_iterations_per_epoch > len(train_dataloader):
+    if cfg.train.iterations_per_epoch > len(train_dataloader):
         cfg.train_iterations_per_epoch = len(train_dataloader)
         warnings.warn(
             f"train_iterations_per_epoch override to {cfg.train_iterations_per_epoch} as it is larger than the dataset size"
@@ -81,10 +80,10 @@ def main(cfg):
 
     optim, scheduler = make_optim_and_scheduler(
         model,
-        total_epochs=cfg.train_num_epochs,
-        lr=cfg.learning_rate,
-        warmup_epochs=cfg.learning_rate_warmup_epochs,
-        warm_restart=cfg.learning_rate_warm_restart,
+        total_epochs=cfg.train.num_epochs,
+        lr=cfg.train.learning_rate,
+        warmup_epochs=cfg.train.learning_rate_warmup_epochs,
+        warm_restart=cfg.train.learning_rate_warm_restart,
     )
 
     experiment_name = (
@@ -96,10 +95,10 @@ def main(cfg):
         mode=cfg.logging_mode,
     )
     logger.begin()
-    with tqdm(range(cfg.train_num_epochs)) as pbar:
+    with tqdm(range(cfg.train.num_epochs)) as pbar:
         best_validation_accuracy: float = 0.0
 
-        for epoch in range(cfg.train_num_epochs):
+        for epoch in range(cfg.train.num_epochs):
             # Train
             train_loss = 0
             train_rule_loss = 0
@@ -110,7 +109,7 @@ def main(cfg):
 
             train_iter = iter(train_dataloader)
 
-            for _ in range(cfg.train_iterations_per_epoch):
+            for _ in range(cfg.train.iterations_per_epoch):
                 optim.zero_grad()
                 loss = 0
                 data = next(train_iter).to(device)
@@ -135,7 +134,9 @@ def main(cfg):
 
                 # Update weights
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_grad_norm)
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(), cfg.train.clip_grad_norm
+                )
                 optim.step()
                 scheduler.step()
 
@@ -146,9 +147,9 @@ def main(cfg):
                 if cfg.monotonicity_loss_enable:
                     train_monotonicity_loss += monotonicity_loss.item()
 
-            train_loss /= cfg.train_iterations_per_epoch
-            train_rule_loss /= cfg.train_iterations_per_epoch
-            train_monotonicity_loss /= cfg.train_iterations_per_epoch
+            train_loss /= cfg.train.iterations_per_epoch
+            train_rule_loss /= cfg.train.iterations_per_epoch
+            train_monotonicity_loss /= cfg.train.iterations_per_epoch
             train_accuracy = correct / total
 
             if epoch % cfg.logging_checkpoint_interval == 0:

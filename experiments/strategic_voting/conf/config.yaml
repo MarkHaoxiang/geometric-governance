@@ -29,10 +29,13 @@ election_model:
   size: small
   from_pretrained: utilitarian_small_robust_5
   freeze_weights: true
-train_num_epochs: 400
-train_iterations_per_epoch: 25
-learning_rate: 0.0003
-clip_grad_norm: 1.0
+train:
+  num_epochs: 400
+  iterations_per_epoch: 25
+  learning_rate: 0.0003
+  learning_rate_warmup_epochs: 5
+  learning_rate_warm_restart: false
+  clip_grad_norm: 1.0
 logging_checkpoint_interval: 5
 logging_mode: online
 monotonicity_loss_enable: false

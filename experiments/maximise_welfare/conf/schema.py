@@ -1,5 +1,6 @@
 from typing import Literal
 from pydantic import BaseModel
+from geometric_governance.train import TrainingSchema
 from geometric_governance.util import RangeOrValue
 
 
@@ -21,10 +22,7 @@ class Config(BaseModel):
     test_dataset: Dataset
 
     # Training parameters
-    train_num_epochs: int
-    train_iterations_per_epoch: int
-    learning_rate: float
-    clip_grad_norm: float
+    train: TrainingSchema
 
     # Logging
     logging_checkpoint_interval: int
