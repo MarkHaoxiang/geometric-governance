@@ -19,6 +19,7 @@ from geometric_governance.train import (
     make_optim_and_scheduler,
 )
 from geometric_governance.model import ElectionModel, create_election_model
+from geometric_governance.data import infinite_iter
 from conf.schema import Config
 from dataset import Dataloader, load_dataloader
 
@@ -65,9 +66,9 @@ def main(cfg):
     )
 
     if cfg.train.iterations_per_epoch > len(train_dataloader):
-        cfg.train_iterations_per_epoch = len(train_dataloader)
+        cfg.train.iterations_per_epoch = len(train_dataloader)
         warnings.warn(
-            f"train_iterations_per_epoch override to {cfg.train_iterations_per_epoch} as it is larger than the dataset size"
+            f"train_iterations_per_epoch override to {cfg.train.iterations_per_epoch} as it is larger than the dataset size"
         )
 
     # Create model
@@ -90,12 +91,14 @@ def main(cfg):
         f"{cfg.representation}-election-{cfg.voting_rule}-{cfg.model_size}"
     )
     logger = Logger(
+        project_postfix="learn_voting_rules",
         experiment_name=experiment_name,
         config=cfg,
         mode=cfg.logging_mode,
     )
     logger.begin()
     with tqdm(range(cfg.train.num_epochs)) as pbar:
+        train_iter = infinite_iter(train_dataloader)
         best_validation_accuracy: float = 0.0
 
         for epoch in range(cfg.train.num_epochs):
@@ -106,8 +109,6 @@ def main(cfg):
             total, correct = 0, 0
 
             model.train()
-
-            train_iter = iter(train_dataloader)
 
             for _ in range(cfg.train.iterations_per_epoch):
                 optim.zero_grad()
@@ -138,7 +139,6 @@ def main(cfg):
                     model.parameters(), cfg.train.clip_grad_norm
                 )
                 optim.step()
-                scheduler.step()
 
                 total += data.winners.sum().item()
                 correct += ((election.winners > 0) & (data.winners > 0)).sum().item()
@@ -199,6 +199,7 @@ def main(cfg):
                 }
             )
 
+            scheduler.step()
             pbar.update(1)
 
     # Candidate number generalisation test

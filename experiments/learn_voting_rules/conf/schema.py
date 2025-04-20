@@ -33,7 +33,7 @@ class Config(BaseModel):
 
     # Model parameters
     representation: Literal["graph", "set"]
-    model_size: Literal["small", "large"]
+    model_size: Literal["small", "medium"]
 
     # Experiment utility
     repeat_number: int | None = None

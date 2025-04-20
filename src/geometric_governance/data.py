@@ -264,3 +264,9 @@ class SetDataset(TorchDataset):
         y = torch.stack(winners_list)
 
         return SetData(X=X, index=index, winners=y)
+
+
+def infinite_iter(dataloader):
+    while True:
+        for batch in dataloader:
+            yield batch

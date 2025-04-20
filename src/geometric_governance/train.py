@@ -64,10 +64,10 @@ def make_optim_and_scheduler(
     model: torch.nn.Module,
     lr: float,
     total_epochs: int | None = None,
-    warmup_epochs: int = 5,
+    warmup_epochs: int = 20,
     warmup_start: float = 0.1,
     warmup_end: float = 1,
-    T_0: int = 5,
+    T_0: int = 10,
     T_mult: int = 2,
     warm_restart: bool = True,
 ):
