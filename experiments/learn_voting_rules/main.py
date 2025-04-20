@@ -49,8 +49,6 @@ def run_evaluation(
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg):
     cfg = omega_to_pydantic(cfg, Config)
-    print(cfg)
-    return
 
     # Override because DeepSets can't generalise
     if cfg.representation == "set":
