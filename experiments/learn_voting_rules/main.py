@@ -79,7 +79,13 @@ def main(cfg):
     ).to(device=device)
     print(f"parameter_count: {get_parameter_count(model)}")
 
-    optim, scheduler = make_optim_and_scheduler(model, lr=cfg.learning_rate)
+    optim, scheduler = make_optim_and_scheduler(
+        model,
+        total_epochs=cfg.train_num_epochs,
+        lr=cfg.learning_rate,
+        warmup_epochs=cfg.learning_rate_warmup_epochs,
+        warm_restart=cfg.learning_rate_warm_restart,
+    )
 
     experiment_name = (
         f"{cfg.representation}-election-{cfg.voting_rule}-{cfg.model_size}"

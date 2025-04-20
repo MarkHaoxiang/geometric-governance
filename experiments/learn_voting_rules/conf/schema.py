@@ -23,6 +23,8 @@ class Config(BaseModel):
     train_num_epochs: int
     train_iterations_per_epoch: int
     learning_rate: float
+    learning_rate_warmup_epochs: int
+    learning_rate_warm_restart: bool
     clip_grad_norm: float
 
     # Logging

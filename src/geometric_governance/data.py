@@ -123,7 +123,7 @@ class ElectionData:
         return data
 
 
-def generate_impartial_dirichlet_election(
+def generate_dirichlet_election(
     num_voters: int,
     num_candidates: int,
     rng: np.random.Generator | None = None,

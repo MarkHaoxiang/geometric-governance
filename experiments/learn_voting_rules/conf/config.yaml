@@ -24,6 +24,8 @@ test_dataset:
 train_num_epochs: 400
 train_iterations_per_epoch: 25
 learning_rate: 0.001
+learning_rate_warmup_epochs: 5
+learning_rate_warm_restart: true
 clip_grad_norm: 1.0
 logging_checkpoint_interval: 5
 logging_mode: online

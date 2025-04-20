@@ -11,7 +11,7 @@ from geometric_governance.util import (
     get_max,
     DATA_DIR as _DATA_DIR,
 )
-from geometric_governance.data import SetDataset, generate_impartial_dirichlet_election
+from geometric_governance.data import SetDataset, generate_dirichlet_election
 from geometric_governance.objective import VotingRulesRegistry
 
 DATA_DIR = os.path.join(_DATA_DIR, "learn_voting_rules")
@@ -35,7 +35,7 @@ def generate_rule_dataset(
             num_voters = get_value(num_voters_range, rng)
             num_candidates = get_value(num_candidates_range, rng)
 
-            election_data = generate_impartial_dirichlet_election(
+            election_data = generate_dirichlet_election(
                 num_voters=num_voters, num_candidates=num_candidates, rng=rng
             )
 
