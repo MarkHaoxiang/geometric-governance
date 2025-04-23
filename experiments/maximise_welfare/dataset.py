@@ -11,7 +11,10 @@ from geometric_governance.util import (
     DATA_DIR as _DATA_DIR,
 )
 from geometric_governance.data import generate_dirichlet_election
-from geometric_governance.objective import WelfareObjectiveRegistry
+from geometric_governance.objective import (
+    WelfareObjectiveRegistry,
+    VotingObjectiveRegistry,
+)
 
 DATA_DIR = os.path.join(_DATA_DIR, "maximise_welfare")
 if not os.path.exists(DATA_DIR):
@@ -25,6 +28,7 @@ def generate_welfare_dataset(
     vote_data: Literal["ranking", "utility"],
     welfare_rule: Literal["utilitarian", "nash", "rawlsian"],
     seed: int,
+    attach_rule_winners: bool = False,
 ):
     rng = np.random.default_rng(seed=seed)
     dataset = []
@@ -46,9 +50,16 @@ def generate_welfare_dataset(
             if winners.max() < 1.0:  # Tie
                 continue
 
+            if attach_rule_winners:
+                rule_winners = {}
+                for rule, fn in VotingObjectiveRegistry.items():
+                    rule_winners[rule] = fn(election_data)
+
             graph = election_data.to_bipartite_graph(vote_data=vote_data)
             graph.winners = winners
             graph.welfare = welfare_value
+            if attach_rule_winners:
+                graph.rule_winners = rule_winners
 
             dataset.append(graph)
 
@@ -69,6 +80,7 @@ def load_dataloader(
     vote_data: Literal["ranking", "utility"],
     welfare_rule: Literal["utilitarian", "nash", "rawlsian"],
     seed: int,
+    attach_rule_winners: bool = False,
     recompute: bool = True,
 ) -> tuple[Dataloader, Dataloader, Dataloader]:
     dataset_file = os.path.join(
@@ -81,12 +93,13 @@ def load_dataloader(
             dataset = torch.load(f, weights_only=False)
     else:
         dataset = generate_welfare_dataset(
-            dataset_size,
-            num_voters,
-            num_candidates,
-            vote_data,
-            welfare_rule,
-            seed,
+            dataset_size=dataset_size,
+            num_voters_range=num_voters,
+            num_candidates_range=num_candidates,
+            vote_data=vote_data,
+            welfare_rule=welfare_rule,
+            seed=seed,
+            attach_rule_winners=attach_rule_winners,
         )
 
         with open(dataset_file, "wb") as f:

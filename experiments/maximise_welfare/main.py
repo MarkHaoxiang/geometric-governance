@@ -59,9 +59,14 @@ def main(cfg):
             welfare_rule=cfg.welfare_rule,
             vote_data=cfg.vote_data,
             dataloader_batch_size=cfg.dataloader_batch_size,
+            attach_rule_winners=attach_rule_winners,
             **dataset.model_dump(),
         )
-        for dataset in (cfg.train_dataset, cfg.val_dataset, cfg.test_dataset)
+        for (dataset, attach_rule_winners) in (
+            (cfg.train_dataset, False),
+            (cfg.val_dataset, True),
+            (cfg.test_dataset, True),
+        )
     )
 
     if cfg.train.iterations_per_epoch > len(train_dataloader):

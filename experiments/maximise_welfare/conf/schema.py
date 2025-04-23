@@ -5,6 +5,7 @@ from geometric_governance.util import RangeOrValue
 
 
 class Dataset(BaseModel):
+    source: Literal["dirichlet", "spatial", "grenoble", "movielens"]
     dataset_size: int
     num_voters: RangeOrValue
     num_candidates: RangeOrValue

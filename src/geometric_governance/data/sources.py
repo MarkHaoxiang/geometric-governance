@@ -1,7 +1,6 @@
 import os
 from typing import Callable
 from functools import cache
-import torch
 import numpy as np
 from numpy import typing as npt
 import pandas as pd
@@ -143,3 +142,11 @@ def generate_movielens_dataset(
         num_candidates=num_candidates,
         voter_utilities=voter_utilities,
     )
+
+
+DatasetRegistry = {
+    "dirichlet": generate_dirichlet_election,
+    "spatial": generate_spatial_election,
+    "grenoble": generate_grenoble_election,
+    "movielens": generate_movielens_dataset,
+}

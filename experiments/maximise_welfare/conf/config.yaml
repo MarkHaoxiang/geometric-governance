@@ -5,18 +5,21 @@ welfare_rule: utilitarian
 vote_data: utility
 dataloader_batch_size: 256
 train_dataset:
+  source: dirichlet
   dataset_size: 100000
   num_voters: [3, 50]
   num_candidates: [2, 10]
   seed: 42
   recompute: False
 val_dataset:
+  source: dirichlet
   dataset_size: 1280
   num_voters: 75
   num_candidates: 15
   seed: 16180
   recompute: False
 test_dataset:
+  source: dirichlet
   dataset_size: 1280
   num_voters: 100
   num_candidates: 20
