@@ -1,5 +1,11 @@
 import torch
-from geometric_governance.data import ElectionData, get_scoring_function_winners
+from geometric_governance.data import ElectionData
+
+
+def get_scoring_function_winners(scores: torch.Tensor):
+    winners = torch.where(scores == torch.max(scores), 1, 0)
+    winners = (winners / winners.sum()).to(torch.float32)
+    return winners
 
 
 def compute_plurality(election_data: ElectionData) -> torch.Tensor:

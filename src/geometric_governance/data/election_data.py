@@ -1,15 +1,10 @@
-import os
-from typing import Literal, Callable
 from dataclasses import dataclass
-from functools import cache
+
+from typing import Literal
 import numpy as np
-from numpy import typing as npt
-import pandas as pd
 import torch
 from torch.utils.data import Dataset as TorchDataset
 from torch_geometric.data import Data
-
-from geometric_governance.util import DATA_DIR
 
 
 class ElectionData:
@@ -90,8 +85,8 @@ class ElectionData:
             if top_k_candidates is None
             else min(self.num_candidates, top_k_candidates)
         )
-        edge_index = []
-        edge_attr = []
+        edge_index_list = []
+        edge_attr_list = []
         for voter in range(self.num_voters):
             if vote_data == "ranking":
                 votes = [
@@ -105,15 +100,17 @@ class ElectionData:
                 votes = [
                     (
                         self.voter_ranked_order[voter, i],
-                        self.voter_utilities[voter, self.voter_ranked_order[voter, i]],
+                        self.voter_utilities[
+                            voter, self.voter_ranked_order[voter, i]
+                        ].item(),
                     )
                     for i in range(k)
                 ]
             for candidate, score in votes:
-                edge_index.append([voter, candidate + self.num_voters])
-                edge_attr.append(score)
-        edge_index = torch.tensor(edge_index).T.long()
-        edge_attr = torch.tensor(edge_attr).unsqueeze(-1).to(torch.float32)
+                edge_index_list.append([voter, candidate + self.num_voters])
+                edge_attr_list.append(score)
+        edge_index = torch.tensor(edge_index_list).T.long()
+        edge_attr = torch.tensor(edge_attr_list).unsqueeze(-1).to(torch.float32)
 
         candidate_idxs = x[:, 1] == 1
         data = Data(
@@ -124,134 +121,6 @@ class ElectionData:
         )
         data.validate(raise_on_error=True)
         return data
-
-
-def generate_dirichlet_election(
-    num_voters: int,
-    num_candidates: int,
-    rng: np.random.Generator | None = None,
-    utility_profile_alpha: float = 1.0,
-):
-    if rng is None:
-        rng = np.random.default_rng()
-
-    voter_utilities = rng.dirichlet(
-        alpha=(utility_profile_alpha,) * num_candidates, size=num_voters
-    )
-
-    return ElectionData(
-        num_voters=num_voters,
-        num_candidates=num_candidates,
-        voter_utilities=voter_utilities,
-    )
-
-
-def generate_spatial_election(
-    num_voters: int,
-    num_candidates: int,
-    rng: np.random.Generator | None = None,
-    k: int = 3,
-    f: Callable[
-        [npt.NDArray[np.float32]], npt.NDArray[np.float32]
-    ] = lambda x: np.maximum(0, 1 - x),
-):
-    if rng is None:
-        rng = np.random.default_rng()
-    voters = rng.uniform(low=0.0, high=1.0, size=(num_voters, k))
-    candidates = rng.uniform(low=0.0, high=1.0, size=(num_candidates, k))
-
-    diff = voters[:, np.newaxis, :] - candidates[np.newaxis, :, :]
-    dist_matrix = np.linalg.norm(diff, axis=-1)
-
-    voter_utilities = f(dist_matrix)
-
-    return ElectionData(
-        num_voters=num_voters,
-        num_candidates=num_candidates,
-        voter_utilities=voter_utilities,
-    )
-
-
-@cache
-def _read_grenoble_data():
-    df = pd.read_csv(os.path.join(DATA_DIR, "GrenobleData_2017_Presid+.csv"), sep=";")
-    df.columns = [col.strip() for col in df.columns]
-    EV_COLUMNS = [col for col in df.columns if col.startswith("EV")]
-    EV_COLUMNS.remove("EV_OPINION")
-    df = df[EV_COLUMNS]
-    df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
-    df = df.replace(to_replace=["None"], value=np.nan)
-    return df, EV_COLUMNS
-
-
-def generate_grenoble_election(
-    num_voters: int,
-    num_candidates: int,
-    rng: np.random.Generator | None = None,
-):
-    if rng is None:
-        rng = np.random.default_rng()
-    df, candidates = _read_grenoble_data()
-
-    assert num_candidates <= len(candidates)
-    candidates = rng.choice(candidates, size=num_candidates)
-    df = df[candidates].dropna()
-    df = df[~(df == 0).all(axis=1)]
-
-    assert num_voters <= len(df)
-    df = df.astype(float)
-    voter_utilities = df.to_numpy()
-    idxs = np.random.choice(voter_utilities.shape[0], num_voters, replace=False)
-    voter_utilities = voter_utilities[idxs]
-
-    return ElectionData(
-        num_voters=num_voters,
-        num_candidates=num_candidates,
-        voter_utilities=voter_utilities,
-    )
-
-
-def get_scoring_function_winners(scores: torch.Tensor):
-    winners = torch.where(scores == torch.max(scores), 1, 0)
-    winners = (winners / winners.sum()).to(torch.float32)
-    return winners
-
-
-def utility_matrix_to_graph(U):
-    """
-    Converts a utility matrix U (Voters x Candidates) into a PyTorch Geometric Data object.
-
-    Parameters:
-        U (torch.Tensor): A tensor of shape (..., num_voters, num_candidates).
-
-    Returns:
-        Data: A PyTorch Geometric Data object.
-    """
-    num_voters, num_candidates = U.size(-2), U.size(-1)
-
-    # Node features: one-hot encoding for voters and candidates
-    x_voters = torch.tensor([[1, 0]] * num_voters, dtype=torch.float)
-    x_candidates = torch.tensor([[0, 1]] * num_candidates, dtype=torch.float)
-    x = torch.cat([x_voters, x_candidates], dim=0)
-
-    # Create edges
-    voter_indices = torch.arange(num_voters).repeat_interleave(num_candidates)
-    candidate_indices = torch.arange(num_candidates).repeat(num_voters)
-
-    # Shift candidate indices to match node indexing
-    candidate_indices += num_voters
-
-    edge_index = torch.stack([voter_indices, candidate_indices], dim=0)
-
-    # Edge attributes (utility values)
-    edge_attr = U.flatten().unsqueeze(-1)
-
-    # Candidate indices
-    candidate_idxs = x[:, 1] == 1
-
-    return Data(
-        x=x, edge_index=edge_index, edge_attr=edge_attr, candidate_idxs=candidate_idxs
-    )
 
 
 @dataclass
