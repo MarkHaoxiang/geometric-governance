@@ -1,12 +1,15 @@
+import os
 from typing import Literal, Callable
 from dataclasses import dataclass
-
+from functools import cache
 import numpy as np
 from numpy import typing as npt
+import pandas as pd
 import torch
 from torch.utils.data import Dataset as TorchDataset
-
 from torch_geometric.data import Data
+
+from geometric_governance.util import DATA_DIR
 
 
 class ElectionData:
@@ -148,7 +151,6 @@ def generate_spatial_election(
     num_candidates: int,
     rng: np.random.Generator | None = None,
     k: int = 3,
-    normalise: bool = True,
     f: Callable[
         [npt.NDArray[np.float32]], npt.NDArray[np.float32]
     ] = lambda x: np.maximum(0, 1 - x),
@@ -162,11 +164,45 @@ def generate_spatial_election(
     dist_matrix = np.linalg.norm(diff, axis=-1)
 
     voter_utilities = f(dist_matrix)
-    if normalise:
-        # Normalise the utilities of each voter to sum to 1
-        voter_utilities = voter_utilities / np.sum(
-            voter_utilities, axis=-1, keepdims=True
-        )
+
+    return ElectionData(
+        num_voters=num_voters,
+        num_candidates=num_candidates,
+        voter_utilities=voter_utilities,
+    )
+
+
+@cache
+def _read_grenoble_data():
+    df = pd.read_csv(os.path.join(DATA_DIR, "GrenobleData_2017_Presid+.csv"), sep=";")
+    df.columns = [col.strip() for col in df.columns]
+    EV_COLUMNS = [col for col in df.columns if col.startswith("EV")]
+    EV_COLUMNS.remove("EV_OPINION")
+    df = df[EV_COLUMNS]
+    df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
+    df = df.replace(to_replace=["None"], value=np.nan)
+    return df, EV_COLUMNS
+
+
+def generate_grenoble_election(
+    num_voters: int,
+    num_candidates: int,
+    rng: np.random.Generator | None = None,
+):
+    if rng is None:
+        rng = np.random.default_rng()
+    df, candidates = _read_grenoble_data()
+
+    assert num_candidates <= len(candidates)
+    candidates = rng.choice(candidates, size=num_candidates)
+    df = df[candidates].dropna()
+    df = df[~(df == 0).all(axis=1)]
+
+    assert num_voters <= len(df)
+    df = df.astype(float)
+    voter_utilities = df.to_numpy()
+    idxs = np.random.choice(voter_utilities.shape[0], num_voters, replace=False)
+    voter_utilities = voter_utilities[idxs]
 
     return ElectionData(
         num_voters=num_voters,
