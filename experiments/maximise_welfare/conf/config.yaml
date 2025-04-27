@@ -2,40 +2,39 @@ defaults:
   - _self_
 
 welfare_rule: utilitarian
-vote_data: utility
+vote_data: ranking
+vote_source: dirichlet
 dataloader_batch_size: 256
 train_dataset:
-  vote_source: dirichlet
   dataset_size: 100000
   num_voters: [3, 50]
   num_candidates: [2, 10]
   seed: 42
   recompute: False
 val_dataset:
-  vote_source: dirichlet
   dataset_size: 1280
   num_voters: 75
   num_candidates: 15
   seed: 16180
   recompute: False
 test_dataset:
-  vote_source: dirichlet
   dataset_size: 1280
   num_voters: 100
   num_candidates: 20
   seed: 314159
   recompute: False
 train:
-  num_epochs: 400
+  num_epochs: 330
   iterations_per_epoch: 25
   learning_rate: 0.0003
-  learning_rate_warmup_epochs: 5
+  learning_rate_warmup_epochs: 20
   learning_rate_warm_restart: false
   clip_grad_norm: 1.0
 logging_checkpoint_interval: 5
-logging_mode: disabled
-monotonicity_loss_enable: false
+logging_mode: online
+monotonicity_loss_calculate: true
+monotonicity_loss_train: false
 monotonicity_loss_batch_size: 32
-welfare_loss_enable: true
+welfare_loss_enable: false
 model_size: small
 model_aggr: sum

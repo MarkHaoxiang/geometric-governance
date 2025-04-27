@@ -58,6 +58,7 @@ def main(cfg):
         load_dataloader(
             welfare_rule=cfg.welfare_rule,
             vote_data=cfg.vote_data,
+            vote_source=cfg.vote_source,
             dataloader_batch_size=cfg.dataloader_batch_size,
             attach_rule_winners=attach_rule_winners,
             **dataset.model_dump(),
@@ -93,9 +94,7 @@ def main(cfg):
     )
 
     method = "welfare" if cfg.welfare_loss_enable else "rule"
-    experiment_name = (
-        f"{cfg.vote_data}-{cfg.welfare_rule}-{method}-{cfg.model_size}-{cfg.model_aggr}"
-    )
+    experiment_name = f"{cfg.vote_source}-{cfg.vote_data}-{cfg.welfare_rule}-{method}-{cfg.model_size}-{cfg.model_aggr}"
     logger = Logger(
         project="maximise-welfare",
         experiment_name=experiment_name,
@@ -103,6 +102,13 @@ def main(cfg):
         mode=cfg.logging_mode,
     )
     logger.begin()
+
+    if cfg.monotonicity_loss_train and not cfg.monotonicity_loss_calculate:
+        warnings.warn(
+            message="Overriding monotonicity loss calculation because train is enabled."
+        )
+        cfg.monotonicity_loss_calculate = True
+
     with tqdm(range(cfg.train.num_epochs)) as pbar:
         best_validation_welfare: float = -math.inf
 
@@ -116,13 +122,13 @@ def main(cfg):
             total, correct = 0, 0
 
             model.train()
-
             train_iter = iter(train_dataloader)
 
             for _ in range(cfg.train.iterations_per_epoch):
                 optim.zero_grad()
                 loss = 0
                 data = next(train_iter).to(device)
+                data.edge_attr.requires_grad = True
                 election = model.election(data)
 
                 # Rule Loss (NLLL)
@@ -148,12 +154,13 @@ def main(cfg):
                     loss += rule_loss
 
                 # Monotonicity loss
-                monotonicity_loss = compute_monotonicity_loss(
-                    election, data, batch_size=cfg.monotonicity_loss_batch_size
-                )
-                train_monotonicity_loss += monotonicity_loss.item()
-                if cfg.monotonicity_loss_enable:
-                    loss += monotonicity_loss
+                if cfg.monotonicity_loss_calculate:
+                    monotonicity_loss = compute_monotonicity_loss(
+                        election, data, batch_size=cfg.monotonicity_loss_batch_size
+                    )
+                    train_monotonicity_loss += monotonicity_loss.item()
+                    if cfg.monotonicity_loss_train:
+                        loss += monotonicity_loss
 
                 # Total Loss
                 train_loss += loss.item()
@@ -164,7 +171,6 @@ def main(cfg):
                     model.parameters(), cfg.train.clip_grad_norm
                 )
                 optim.step()
-                scheduler.step()
 
                 # Logging
                 # Accuracy
@@ -181,21 +187,22 @@ def main(cfg):
             train_rule_loss /= cfg.train.iterations_per_epoch
             train_welfare_loss /= cfg.train.iterations_per_epoch
             train_welfare /= cfg.train.iterations_per_epoch
-            train_monotonicity_loss /= cfg.train.iterations_per_epoch
             train_accuracy = correct / total
 
             if epoch % cfg.logging_checkpoint_interval == 0:
                 torch.save(
-                    model,
-                    os.path.join(logger.checkpoint_dir, f"model_{epoch}.pt"),
+                    model, os.path.join(logger.checkpoint_dir, f"model_{epoch}.pt")
                 )
+
+            if cfg.monotonicity_loss_calculate:
+                train_monotonicity_loss /= cfg.train.iterations_per_epoch
+                logger.log({"train/monotonicity_loss": train_monotonicity_loss})
 
             logger.log(
                 {
                     "train/total_loss": train_loss,
                     "train/rule_loss": train_rule_loss,
                     "train/welfare_loss": train_welfare_loss,
-                    "train/monotonicity_loss": train_monotonicity_loss,
                     "train/accuracy": train_accuracy,
                 }
             )
@@ -232,6 +239,7 @@ def main(cfg):
                 }
             )
 
+            scheduler.step()
             pbar.update(1)
 
     # Candidate number generalisation test

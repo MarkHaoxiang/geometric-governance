@@ -7,7 +7,6 @@ from geometric_governance.data import DatasetSource
 
 
 class Dataset(BaseModel):
-    vote_source: DatasetSource
     dataset_size: int
     num_voters: RangeOrValue
     num_candidates: RangeOrValue
@@ -19,6 +18,7 @@ class Config(BaseModel):
     # Dataset parameters
     welfare_rule: Literal["utilitarian", "nash", "rawlsian"]
     vote_data: Literal["ranking", "utility"]
+    vote_source: DatasetSource
     dataloader_batch_size: int
     train_dataset: Dataset
     val_dataset: Dataset
@@ -32,7 +32,8 @@ class Config(BaseModel):
     logging_mode: Literal["online", "offline", "disabled"]
 
     # Special loss parameters
-    monotonicity_loss_enable: bool
+    monotonicity_loss_calculate: bool
+    monotonicity_loss_train: bool
     monotonicity_loss_batch_size: int
     welfare_loss_enable: bool
 

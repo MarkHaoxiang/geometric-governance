@@ -114,6 +114,7 @@ def main(cfg):
                 optim.zero_grad()
                 loss = 0
                 data = next(train_iter).to(device)
+                data.edge_attr.requires_grad = True
                 election = model.election(data)
 
                 # Rule Loss (NLLL)
@@ -149,7 +150,6 @@ def main(cfg):
 
             train_loss /= cfg.train.iterations_per_epoch
             train_rule_loss /= cfg.train.iterations_per_epoch
-            train_monotonicity_loss /= cfg.train.iterations_per_epoch
             train_accuracy = correct / total
 
             if epoch % cfg.logging_checkpoint_interval == 0:
@@ -162,10 +162,12 @@ def main(cfg):
                 {
                     "train/total_loss": train_loss,
                     "train/rule_loss": train_rule_loss,
-                    "train/monotonicity_loss": train_monotonicity_loss,
                     "train/accuracy": train_accuracy,
                 }
             )
+            if cfg.monotonicity_loss_enable:
+                train_monotonicity_loss /= cfg.train.iterations_per_epoch
+                logger.log({"train/monotonicity_loss": train_monotonicity_loss})
 
             # Validation
             model.eval()
