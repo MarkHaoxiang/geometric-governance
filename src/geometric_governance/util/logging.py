@@ -10,7 +10,8 @@ class Logger:
     def __init__(
         self,
         experiment_name: str,
-        project_postfix: str | None = None,
+        project: str,
+        entity: str | None = None,
         config: dict | None = None,
         mode: Literal["online", "offline", "disabled"] = "online",
     ):
@@ -27,9 +28,8 @@ class Logger:
         self.checkpoint_dir = os.path.join(dir, "checkpoints")
         self.config = config
         self.mode = mode
-        self.project_name = "geometric_governance"
-        if project_postfix:
-            self.project_name += f"_{project_postfix}"
+        self.project_name = project
+        self.entity = entity
 
         os.makedirs(dir, exist_ok=False)
         os.makedirs(self.checkpoint_dir, exist_ok=False)
@@ -42,6 +42,7 @@ class Logger:
 
     def begin(self):
         wandb.init(
+            entity=self.entity,
             project=self.project_name,
             name=self.experiment_name,
             dir=self.dir,

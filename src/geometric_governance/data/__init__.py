@@ -1,4 +1,9 @@
-from geometric_governance.data.election_data import ElectionData, SetDataset, SetData
+from geometric_governance.data.election_data import (
+    ElectionData,
+    SetDataset,
+    SetData,
+    infinite_iter,
+)
 from geometric_governance.data.sources import (
     generate_dirichlet_election,
     generate_spatial_election,
@@ -13,6 +18,7 @@ __all__ = [
     "ElectionData",
     "SetDataset",
     "SetData",
+    "infinite_iter",
     "generate_dirichlet_election",
     "generate_spatial_election",
     "generate_grenoble_election",
