@@ -88,7 +88,7 @@ def load_dataloader(
 ) -> tuple[Dataloader, Dataloader, Dataloader]:
     dataset_file = os.path.join(
         DATA_DIR,
-        f"welfare_dataset_{dataset_size}_{num_voters}_{num_candidates}_{vote_data}_{welfare_rule}_{seed}.pt",
+        f"{vote_source}_dataset_{dataset_size}_{num_voters}_{num_candidates}_{vote_data}_{welfare_rule}_{seed}.pt",
     )
 
     if os.path.exists(dataset_file) and not recompute:

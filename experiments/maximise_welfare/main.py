@@ -97,6 +97,7 @@ def main(cfg):
         f"{cfg.vote_data}-{cfg.welfare_rule}-{method}-{cfg.model_size}-{cfg.model_aggr}"
     )
     logger = Logger(
+        project="maximise-welfare",
         experiment_name=experiment_name,
         config=cfg,
         mode=cfg.logging_mode,

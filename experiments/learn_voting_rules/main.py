@@ -91,7 +91,7 @@ def main(cfg):
         f"{cfg.representation}-election-{cfg.voting_rule}-{cfg.model_size}"
     )
     logger = Logger(
-        project_postfix="learn_voting_rules",
+        project="learn_voting_rules",
         experiment_name=experiment_name,
         config=cfg,
         mode=cfg.logging_mode,

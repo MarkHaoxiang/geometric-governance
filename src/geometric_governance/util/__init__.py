@@ -8,7 +8,7 @@ from geometric_governance.util.misc import (
     OUTPUT_DIR,
     cuda,
 )
-from geometric_governance.util.logging import Logger, default_entity
+from geometric_governance.util.logging import Logger
 
 __all__ = [
     "RangeOrValue",
@@ -20,5 +20,4 @@ __all__ = [
     "DATA_DIR",
     "OUTPUT_DIR",
     "Logger",
-    "default_entity",
 ]

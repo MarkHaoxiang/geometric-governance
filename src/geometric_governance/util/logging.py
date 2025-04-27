@@ -3,14 +3,18 @@ from typing import Any, Literal
 from datetime import datetime
 import wandb
 
-from geometric_governance.util.misc import OUTPUT_DIR
+from geometric_governance.util.misc import OUTPUT_DIR, get_secrets
+
+
+def get_default_entity() -> str | None:
+    return get_secrets().get("wandb_entity", None)
 
 
 class Logger:
     def __init__(
         self,
-        experiment_name: str,
         project: str,
+        experiment_name: str,
         entity: str | None = None,
         config: dict | None = None,
         mode: Literal["online", "offline", "disabled"] = "online",
@@ -29,7 +33,7 @@ class Logger:
         self.config = config
         self.mode = mode
         self.project_name = project
-        self.entity = entity
+        self.entity = entity if entity else get_default_entity()
 
         os.makedirs(dir, exist_ok=False)
         os.makedirs(self.checkpoint_dir, exist_ok=False)

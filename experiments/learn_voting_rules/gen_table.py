@@ -2,7 +2,7 @@ from collections import defaultdict
 import numpy as np
 import wandb
 
-project_name = "geometric_governance_learn_voting_rules"
+project_name = "geometric_governance/learn_voting_rules"
 api = wandb.Api()
 
 
