@@ -10,7 +10,7 @@ from geometric_governance.util import (
     get_value,
     DATA_DIR as _DATA_DIR,
 )
-from geometric_governance.data import generate_dirichlet_election
+from geometric_governance.data import DatasetSource, DatasetRegistry
 from geometric_governance.objective import (
     WelfareObjectiveRegistry,
     VotingObjectiveRegistry,
@@ -26,6 +26,7 @@ def generate_welfare_dataset(
     num_voters_range: RangeOrValue,
     num_candidates_range: RangeOrValue,
     vote_data: Literal["ranking", "utility"],
+    vote_source: DatasetSource,
     welfare_rule: Literal["utilitarian", "nash", "rawlsian"],
     seed: int,
     attach_rule_winners: bool = False,
@@ -38,7 +39,8 @@ def generate_welfare_dataset(
             num_voters = get_value(num_voters_range, rng)
             num_candidates = get_value(num_candidates_range, rng)
 
-            election_data = generate_dirichlet_election(
+            election_src = DatasetRegistry[vote_source]
+            election_data = election_src(
                 num_voters=num_voters, num_candidates=num_candidates, rng=rng
             )
 
@@ -78,6 +80,7 @@ def load_dataloader(
     num_candidates: RangeOrValue,
     dataloader_batch_size: int,
     vote_data: Literal["ranking", "utility"],
+    vote_source: DatasetSource,
     welfare_rule: Literal["utilitarian", "nash", "rawlsian"],
     seed: int,
     attach_rule_winners: bool = False,
@@ -97,6 +100,7 @@ def load_dataloader(
             num_voters_range=num_voters,
             num_candidates_range=num_candidates,
             vote_data=vote_data,
+            vote_source=vote_source,
             welfare_rule=welfare_rule,
             seed=seed,
             attach_rule_winners=attach_rule_winners,

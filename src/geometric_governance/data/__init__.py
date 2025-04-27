@@ -4,6 +4,7 @@ from geometric_governance.data.sources import (
     generate_spatial_election,
     generate_grenoble_election,
     generate_movielens_dataset,
+    DatasetSource,
     DatasetRegistry,
 )
 from geometric_governance.util import DATA_DIR
@@ -16,6 +17,7 @@ __all__ = [
     "generate_spatial_election",
     "generate_grenoble_election",
     "generate_movielens_dataset",
+    "DatasetSource",
     "DatasetRegistry",
     "DATA_DIR",
 ]

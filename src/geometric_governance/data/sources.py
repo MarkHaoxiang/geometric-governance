@@ -1,5 +1,5 @@
 import os
-from typing import Callable
+from typing import Callable, Literal
 from functools import cache
 import numpy as np
 from numpy import typing as npt
@@ -144,7 +144,8 @@ def generate_movielens_dataset(
     )
 
 
-DatasetRegistry = {
+type DatasetSource = Literal["dirichlet", "spatial", "grenoble", "movielens"]
+DatasetRegistry: dict[DatasetSource, Callable] = {
     "dirichlet": generate_dirichlet_election,
     "spatial": generate_spatial_election,
     "grenoble": generate_grenoble_election,

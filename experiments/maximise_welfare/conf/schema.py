@@ -3,9 +3,11 @@ from pydantic import BaseModel
 from geometric_governance.train import TrainingSchema
 from geometric_governance.util import RangeOrValue
 
+from geometric_governance.data import DatasetSource
+
 
 class Dataset(BaseModel):
-    source: Literal["dirichlet", "spatial", "grenoble", "movielens"]
+    vote_source: DatasetSource
     dataset_size: int
     num_voters: RangeOrValue
     num_candidates: RangeOrValue
