@@ -13,5 +13,6 @@ We use [uv](https://docs.astral.sh/uv/) for dependency management. After install
 
 ## Experiments
 
-To run experiments, go into the relevant experiments folder, and run `uv run python main.py`. Configurations and sweeps are managed using [hydra](https://hydra.cc/docs/1.3/intro/).
+To manually download datasets, see the README file in the data folder.
 
+To run experiments, go into the relevant experiments folder, and run `uv run python main.py`. Configurations and sweeps are managed using [hydra](https://hydra.cc/docs/1.3/intro/).
