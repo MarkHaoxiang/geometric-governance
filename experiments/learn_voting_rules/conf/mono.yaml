@@ -30,8 +30,8 @@ train:
   clip_grad_norm: 1.0
 logging_checkpoint_interval: 5
 logging_mode: online
-monotonicity_loss_calculate: false
+monotonicity_loss_calculate: true
 monotonicity_loss_train: false
-monotonicity_loss_batch_size: 32
 representation: graph
 model_size: small
+monotonicity_loss_batch_size: 32

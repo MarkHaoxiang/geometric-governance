@@ -90,6 +90,12 @@ def main(cfg):
     experiment_name = (
         f"{cfg.representation}-election-{cfg.voting_rule}-{cfg.model_size}"
     )
+    if cfg.monotonicity_loss_train:
+        experiment_name += "-mono"
+        if not cfg.monotonicity_loss_calculate:
+            warnings.warn("Override mono loss calculate.")
+            cfg.monotonicity_loss_calculate = True
+
     logger = Logger(
         project="learn_voting_rules",
         experiment_name=experiment_name,
@@ -127,12 +133,13 @@ def main(cfg):
                 loss += rule_loss
 
                 # Monotonicity loss
-                if cfg.monotonicity_loss_enable:
+                if cfg.monotonicity_loss_calculate:
                     monotonicity_loss = compute_monotonicity_loss(
                         election, data, batch_size=cfg.monotonicity_loss_batch_size
                     )
                     train_monotonicity_loss += monotonicity_loss.item()
-                    loss += monotonicity_loss
+                    if cfg.monotonicity_loss_train:
+                        loss += monotonicity_loss
 
                 # Update weights
                 loss.backward()
@@ -145,8 +152,6 @@ def main(cfg):
                 correct += ((election.winners > 0) & (data.winners > 0)).sum().item()
 
                 train_loss += loss.item()
-                if cfg.monotonicity_loss_enable:
-                    train_monotonicity_loss += monotonicity_loss.item()
 
             train_loss /= cfg.train.iterations_per_epoch
             train_rule_loss /= cfg.train.iterations_per_epoch
@@ -165,7 +170,7 @@ def main(cfg):
                     "train/accuracy": train_accuracy,
                 }
             )
-            if cfg.monotonicity_loss_enable:
+            if cfg.monotonicity_loss_calculate:
                 train_monotonicity_loss /= cfg.train.iterations_per_epoch
                 logger.log({"train/monotonicity_loss": train_monotonicity_loss})
 

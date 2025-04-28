@@ -28,7 +28,8 @@ class Config(BaseModel):
     logging_mode: Literal["online", "offline", "disabled"]
 
     # Special loss parameters
-    monotonicity_loss_enable: bool
+    monotonicity_loss_calculate: bool
+    monotonicity_loss_train: bool
     monotonicity_loss_batch_size: int
 
     # Model parameters
