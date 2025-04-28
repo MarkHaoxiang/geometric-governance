@@ -95,6 +95,8 @@ def main(cfg):
 
     method = "welfare" if cfg.welfare_loss_enable else "rule"
     experiment_name = f"{cfg.vote_source}-{cfg.vote_data}-{cfg.welfare_rule}-{method}-{cfg.model_size}-{cfg.model_aggr}"
+    if cfg.monotonicity_loss_train:
+        experiment_name += "-mono"
     logger = Logger(
         project="maximise-welfare",
         experiment_name=experiment_name,

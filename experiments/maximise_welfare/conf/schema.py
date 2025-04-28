@@ -38,7 +38,7 @@ class Config(BaseModel):
     welfare_loss_enable: bool
 
     # Model parameters
-    model_size: Literal["small", "large"]
+    model_size: Literal["small", "medium"]
     model_aggr: str
 
     # Experiment utility

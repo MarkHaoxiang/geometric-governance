@@ -1,9 +1,6 @@
 defaults:
   - _self_
 
-welfare_rule: nash
-vote_data: ranking
-vote_source: spatial
 dataloader_batch_size: 128
 train_dataset:
   dataset_size: 100000
@@ -35,6 +32,5 @@ logging_mode: online
 monotonicity_loss_calculate: false
 monotonicity_loss_train: false
 monotonicity_loss_batch_size: 32
-welfare_loss_enable: false
-model_size: small
+model_size: medium
 model_aggr: sum
