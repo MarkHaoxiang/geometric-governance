@@ -99,7 +99,7 @@ def main(cfg):
     logger = Logger(
         project="learn_voting_rules",
         experiment_name=experiment_name,
-        config=cfg,
+        config=cfg.model_dump(),
         mode=cfg.logging_mode,
     )
     logger.begin()

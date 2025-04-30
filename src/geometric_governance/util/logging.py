@@ -31,6 +31,8 @@ class Logger:
         self.dir = dir
         self.checkpoint_dir = os.path.join(dir, "checkpoints")
         self.config = config
+        if config is not None:
+            config["checkpoint_dir"] = self.checkpoint_dir
         self.mode = mode
         self.project_name = project
         self.entity = entity if entity else get_default_entity()
