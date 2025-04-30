@@ -10,7 +10,7 @@ from geometric_governance.util import (
     get_value,
     DATA_DIR as _DATA_DIR,
 )
-from geometric_governance.data import generate_dirichlet_election
+from geometric_governance.data import DatasetSource, DatasetRegistry
 from geometric_governance.objective import WelfareObjectiveRegistry
 
 DATA_DIR = os.path.join(_DATA_DIR, "maximise_welfare")
@@ -22,6 +22,8 @@ def generate_welfare_dataset(
     dataset_size: int,
     num_voters_range: RangeOrValue,
     num_candidates_range: RangeOrValue,
+    vote_data: Literal["ranking", "utility"],
+    vote_source: DatasetSource,
     welfare_rule: Literal["utilitarian", "nash", "rawlsian"],
     seed: int,
 ):
@@ -33,7 +35,8 @@ def generate_welfare_dataset(
             num_voters = get_value(num_voters_range, rng)
             num_candidates = get_value(num_candidates_range, rng)
 
-            election_data = generate_dirichlet_election(
+            election_src = DatasetRegistry[vote_source]
+            election_data = election_src(
                 num_voters=num_voters, num_candidates=num_candidates, rng=rng
             )
 
@@ -45,7 +48,7 @@ def generate_welfare_dataset(
             if winners.max() < 1.0:  # Tie
                 continue
 
-            graph = election_data.to_bipartite_graph(vote_data="utility")
+            graph = election_data.to_bipartite_graph(vote_data=vote_data)
             graph.winners = winners
             graph.welfare = welfare_value
 
@@ -65,6 +68,8 @@ def load_dataloader(
     num_voters: RangeOrValue,
     num_candidates: RangeOrValue,
     dataloader_batch_size: int,
+    vote_data: Literal["ranking", "utility"],
+    vote_source: DatasetSource,
     welfare_rule: Literal["utilitarian", "nash", "rawlsian"],
     seed: int,
     shuffle: bool = True,
@@ -72,7 +77,7 @@ def load_dataloader(
 ) -> tuple[Dataloader, Dataloader, Dataloader]:
     dataset_file = os.path.join(
         DATA_DIR,
-        f"welfare_dataset_{dataset_size}_{num_voters}_{num_candidates}_utility_{welfare_rule}_{seed}.pt",
+        f"{vote_source}_dataset_{dataset_size}_{num_voters}_{num_candidates}_{vote_data}_{welfare_rule}_{seed}.pt",
     )
 
     if os.path.exists(dataset_file) and not recompute:
@@ -80,11 +85,13 @@ def load_dataloader(
             dataset = torch.load(f, weights_only=False)
     else:
         dataset = generate_welfare_dataset(
-            dataset_size,
-            num_voters,
-            num_candidates,
-            welfare_rule,
-            seed,
+            dataset_size=dataset_size,
+            num_voters_range=num_voters,
+            num_candidates_range=num_candidates,
+            vote_data=vote_data,
+            vote_source=vote_source,
+            welfare_rule=welfare_rule,
+            seed=seed,
         )
 
         with open(dataset_file, "wb") as f:

@@ -119,6 +119,8 @@ def main(cfg):
     train_dataloader, val_dataloader, test_dataloader = (
         load_dataloader(
             welfare_rule=cfg.welfare_rule,
+            vote_data=cfg.vote_data,
+            vote_source=cfg.vote_source,
             dataloader_batch_size=cfg.dataloader_batch_size,
             **dataset.model_dump(),
         )
@@ -180,15 +182,23 @@ def main(cfg):
         )
 
     freeze = "freeze" if cfg.election_model.freeze_weights else "train"
-    experiment_name = (
-        f"strategy-{cfg.welfare_rule}-{cfg.election_model.size}-{freeze}-{model_name}"
-    )
+    experiment_name = f"{cfg.vote_source}-{cfg.vote_data}-{cfg.welfare_rule}-{cfg.election_model.size}-{freeze}-{model_name}"
+    if cfg.monotonicity_loss_train:
+        experiment_name += "-mono"
     logger = Logger(
+        project="strategic-voting",
         experiment_name=experiment_name,
-        config=cfg,
+        config=cfg.model_dump(),
         mode=cfg.logging_mode,
     )
     logger.begin()
+
+    if cfg.monotonicity_loss_train and not cfg.monotonicity_loss_calculate:
+        warnings.warn(
+            message="Overriding monotonicity loss calculation because train is enabled."
+        )
+        cfg.monotonicity_loss_calculate = True
+
     with tqdm(range(cfg.train.num_epochs)) as pbar:
         election_model.train()
         strategy_model.train()
@@ -304,13 +314,13 @@ def main(cfg):
                 election_loss += welfare_loss
 
                 # Monotonicity loss
-                if cfg.monotonicity_loss_enable:
+                if cfg.monotonicity_loss_calculate:
                     monotonicity_loss = compute_monotonicity_loss(
                         election, data, batch_size=cfg.monotonicity_loss_batch_size
                     )
                     train_monotonicity_loss += monotonicity_loss.item()
-                    election_loss += monotonicity_loss
-                    train_monotonicity_loss += monotonicity_loss.item()
+                    if cfg.monotonicity_loss_train:
+                        election_loss += monotonicity_loss
 
                 # Total Loss
                 train_loss += election_loss.item()
@@ -355,9 +365,10 @@ def main(cfg):
                     "train/total_loss": train_loss,
                     "train/strategy_loss": train_strategy_loss,
                     "train/welfare_loss": train_welfare_loss,
-                    "train/monotonicity_loss": train_monotonicity_loss,
                 }
             )
+            if cfg.monotonicity_loss_calculate:
+                logger.log({"train/monotonicity_loss": train_monotonicity_loss})
 
             # Validation
             val_welfare = run_evaluation(

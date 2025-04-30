@@ -121,10 +121,10 @@ def generate_movielens_dataset(
             break
         max_retries -= 1
 
-    if max_retries <= 0:
-        raise ValueError(
-            f"""Unable to find a valid set of {num_candidates} candidates with at least {num_voters} voters. Consider increasing {min_rating_num}, decreasing {num_candidates}, or decreasing {num_voters}."""
-        )
+        if max_retries <= 0:
+            raise ValueError(
+                f"""Unable to find a valid set of {num_candidates} candidates with at least {num_voters} voters. Consider increasing {min_rating_num}, decreasing {num_candidates}, or decreasing {num_voters}."""
+            )
 
     voter_idxs = np.random.choice(voter_idxs, size=num_voters, replace=False)
     df_filtered = df_filtered[df_filtered["userId"].isin(voter_idxs)]
