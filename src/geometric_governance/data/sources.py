@@ -107,10 +107,11 @@ def _load_movielens_data(min_rating_num: int = 20_000):
 def generate_movielens_dataset(
     num_voters: int,
     num_candidates: int,
+    rng: np.random.Generator | None = None,
     min_rating_num: int = 20_000,
     max_retries: int = 10,
 ):
-    df, movie_ids = _load_movielens_data()
+    df, movie_ids = _load_movielens_data(min_rating_num)
 
     while True:
         movie_idxs = np.random.choice(movie_ids, size=num_candidates, replace=False)
