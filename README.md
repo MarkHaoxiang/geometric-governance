@@ -7,8 +7,10 @@ This repository contains the codebase for automated discovery of welfare-maximis
 - **Generalisation** to an arbitrary number of voter and candidates
 - **Robustness** to strategic voting
 
+The diagrams below showcase an overview of our system consisting of the Graph Election Strategy Network (GESN) and Graph Election Voting Network (GEVN) architectures (Left), as well as our Election Bipartite Graph (EBG) election representation (Right).
+
 <p align="center">
-    <img src="./figures/overview.svg"> &nbsp;&nbsp;&nbsp;&nbsp; <img src="./figures/bipartite_preference_profile.svg">
+    <img src="./figures/overview.svg" width="50%"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <img src="./figures/bipartite_preference_profile.svg" width="20%">
 </p>
 
 *Elections are an indispensable tool for achieving consensus in the face of conflicting motives, with applications from recommender systems and peer-to-peer networks to real-world representative democracy. However, there does not exist a desirable universal voting rule satisfying all scenarios, and the design of these systems is at the forefront of mechanism design research. Automated mechanism design is a promising approach and work has demonstrated that set-invariant architectures are uniquely suited to modelling electoral systems. However, various concerns prevent the direct application to real-world settings---importantly robustness to strategic voting. In this project, we generalise the expressive capability of learned voting rules, and combine improvements in neural network architecture with adversarial training to improve the robustness of voting rules while maximising social welfare. We then test our methods on synthetic and real-world datasets. Our method resolves critical limitations of prior work around learning voting rules, and can enable practioners to apply machine learning to elections in real-world settings.*
