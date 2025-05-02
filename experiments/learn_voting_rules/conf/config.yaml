@@ -1,26 +1,26 @@
 defaults:
   - _self_
 
-voting_rule: stv
+voting_rule: plurality
 dataloader_batch_size: 128
 train_dataset:
   dataset_size: 100000
   num_voters: [3, 50]
   num_candidates: [2, 10]
   seed: 42
-  recompute: False
+  recompute: false
 val_dataset:
   dataset_size: 1000
   num_voters: 75
   num_candidates: 15
   seed: 16180
-  recompute: False
+  recompute: false
 test_dataset:
   dataset_size: 1000
   num_voters: 100
   num_candidates: 20
   seed: 314159
-  recompute: False
+  recompute: false
 train:
   num_epochs: 650
   iterations_per_epoch: 25
@@ -33,5 +33,5 @@ logging_mode: online
 monotonicity_loss_calculate: false
 monotonicity_loss_train: false
 monotonicity_loss_batch_size: 32
-representation: graph
+representation: set_one_hot
 model_size: small

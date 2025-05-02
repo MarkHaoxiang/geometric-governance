@@ -2,6 +2,7 @@ import os
 from typing import Literal
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader as TorchDataloader
 from torch_geometric.loader import DataLoader as GraphDataloader
 from tqdm import tqdm
@@ -24,7 +25,7 @@ def generate_rule_dataset(
     num_voters_range: RangeOrValue,
     num_candidates_range: RangeOrValue,
     voting_rule: str,
-    representation: Literal["set", "graph"],
+    representation: Literal["set", "set_one_hot", "graph"],
     seed: int,
 ):
     rng = np.random.default_rng(seed=seed)
@@ -52,11 +53,21 @@ def generate_rule_dataset(
                 case "set":
                     pad_shape = get_max(num_candidates_range) - num_candidates
                     voter_preferences = election_data.voter_candidate_rank
-                    voter_preferences = torch.nn.functional.pad(
-                        voter_preferences, (0, pad_shape, 0, 0)
-                    )
-                    winners = torch.nn.functional.pad(winners, (0, pad_shape))
+                    voter_preferences = F.pad(voter_preferences, (0, pad_shape, 0, 0))
+                    winners = F.pad(winners, (0, pad_shape))
                     dataset.append((voter_preferences, winners))
+                case "set_one_hot":
+                    M = get_max(num_candidates_range)
+                    pad_shape = M - num_candidates
+                    voter_preferences = election_data.voter_candidate_rank
+                    voter_preferences_one_hot = F.one_hot(
+                        voter_preferences, num_classes=M
+                    ).reshape(num_voters, -1)
+                    voter_preferences_one_hot = F.pad(
+                        voter_preferences_one_hot, (0, pad_shape * M, 0, 0)
+                    )
+                    winners = F.pad(winners, (0, pad_shape))
+                    dataset.append((voter_preferences_one_hot, winners))
                 case _:
                     raise ValueError(f"Unknown representation {representation}.")
 
@@ -75,7 +86,7 @@ def load_dataloader(
     num_candidates: RangeOrValue,
     dataloader_batch_size: int,
     voting_rule: str,
-    representation: Literal["set", "graph"],
+    representation: Literal["set", "set_one_hot", "graph"],
     seed: int,
     recompute: bool = True,
 ) -> tuple[Dataloader, Dataloader, Dataloader]:
@@ -104,7 +115,7 @@ def load_dataloader(
         dataloader = GraphDataloader(
             dataset, batch_size=dataloader_batch_size, shuffle=True
         )
-    elif representation == "set":
+    elif representation.startswith("set"):
         voter_preferences_list = [x[0] for x in dataset]
         winner_list = [x[1] for x in dataset]
         set_dataset = SetDataset(voter_preferences_list, winner_list)

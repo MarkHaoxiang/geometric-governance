@@ -51,7 +51,7 @@ def main(cfg):
     cfg = omega_to_pydantic(cfg, Config)
 
     # Override because DeepSets can't generalise
-    if cfg.representation == "set":
+    if cfg.representation.startswith("set"):
         cfg.val_dataset.num_candidates = get_max(cfg.train_dataset.num_candidates)
 
     # Set up datasets
@@ -90,6 +90,9 @@ def main(cfg):
     experiment_name = (
         f"{cfg.representation}-election-{cfg.voting_rule}-{cfg.model_size}"
     )
+    if cfg.representation != "graph":
+        cfg.monotonicity_loss_train = False
+        cfg.monotonicity_loss_calculate = False
     if cfg.monotonicity_loss_train:
         experiment_name += "-mono"
         if not cfg.monotonicity_loss_calculate:
@@ -120,7 +123,8 @@ def main(cfg):
                 optim.zero_grad()
                 loss = 0
                 data = next(train_iter).to(device)
-                data.edge_attr.requires_grad = True
+                if cfg.monotonicity_loss_calculate:
+                    data.edge_attr.requires_grad = True
                 election = model.election(data)
 
                 # Rule Loss (NLLL)

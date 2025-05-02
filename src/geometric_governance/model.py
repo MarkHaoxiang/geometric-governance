@@ -200,13 +200,20 @@ class MessagePassingElectionModel(ElectionModel):
 
 class DeepSetElectionModel(ElectionModel):
     def __init__(
-        self, num_candidates: int, embedding_size: int = 128, num_layers: int = 3
+        self,
+        num_candidates: int,
+        embedding_size: int = 128,
+        num_layers: int = 3,
+        one_hot: bool = False,
     ):
         super().__init__()
 
         embedding_layers = [embedding_size for _ in range(num_layers)]
 
-        self.local_nn = MLP([num_candidates] + embedding_layers)
+        if one_hot:
+            self.local_nn = MLP([num_candidates**2] + embedding_layers)
+        else:
+            self.local_nn = MLP([num_candidates] + embedding_layers)
         self.global_nn = MLP(embedding_layers + [num_candidates])
 
         self.deepset = DeepSetsAggregation(
@@ -232,6 +239,11 @@ def create_election_model(
     aggr: str = "sum",
 ) -> ElectionModel:
     model: ElectionModel
+    if representation == "set_one_hot":
+        representation = "set"
+        one_hot = True
+    else:
+        one_hot = False
     match representation, model_size:
         case "graph", "small":
             model = MessagePassingElectionModel(
@@ -244,12 +256,18 @@ def create_election_model(
         case "set", "small":
             assert num_candidates is not None, ""
             model = DeepSetElectionModel(
-                num_candidates=num_candidates, embedding_size=155, num_layers=3
+                num_candidates=num_candidates,
+                embedding_size=155,
+                num_layers=3,
+                one_hot=one_hot,
             )
         case "set", "medium":
             assert num_candidates is not None, ""
             model = DeepSetElectionModel(
-                num_candidates=num_candidates, embedding_size=352, num_layers=5
+                num_candidates=num_candidates,
+                embedding_size=352,
+                num_layers=5,
+                one_hot=one_hot,
             )
         case _:
             raise ValueError(f"Unknown model for {representation} {model_size}")
