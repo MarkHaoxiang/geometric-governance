@@ -1,7 +1,7 @@
 defaults:
   - _self_
 
-voting_rule: plurality
+voting_rule: minimax
 dataloader_batch_size: 128
 train_dataset:
   dataset_size: 100000
@@ -33,5 +33,5 @@ logging_mode: online
 monotonicity_loss_calculate: false
 monotonicity_loss_train: false
 monotonicity_loss_batch_size: 32
-representation: set_one_hot
-model_size: small
+representation: graph_unnormalised
+model_size: medium

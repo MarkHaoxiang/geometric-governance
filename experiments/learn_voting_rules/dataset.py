@@ -25,7 +25,7 @@ def generate_rule_dataset(
     num_voters_range: RangeOrValue,
     num_candidates_range: RangeOrValue,
     voting_rule: str,
-    representation: Literal["set", "set_one_hot", "graph"],
+    representation: Literal["set", "set_one_hot", "graph", "graph_unnormalised"],
     seed: int,
 ):
     rng = np.random.default_rng(seed=seed)
@@ -48,6 +48,12 @@ def generate_rule_dataset(
             match representation:
                 case "graph":
                     graph = election_data.to_bipartite_graph(vote_data="ranking")
+                    graph.winners = winners
+                    dataset.append(graph)
+                case "graph_unnormalised":
+                    graph = election_data.to_bipartite_graph(
+                        vote_data="ranking_unnormalised"
+                    )
                     graph.winners = winners
                     dataset.append(graph)
                 case "set":
@@ -86,7 +92,7 @@ def load_dataloader(
     num_candidates: RangeOrValue,
     dataloader_batch_size: int,
     voting_rule: str,
-    representation: Literal["set", "set_one_hot", "graph"],
+    representation: Literal["set", "set_one_hot", "graph", "graph_unnormalised"],
     seed: int,
     recompute: bool = True,
 ) -> tuple[Dataloader, Dataloader, Dataloader]:
@@ -111,7 +117,7 @@ def load_dataloader(
         with open(dataset_file, "wb") as f:
             torch.save(dataset, f)
 
-    if representation == "graph":
+    if representation.startswith("graph"):
         dataloader = GraphDataloader(
             dataset, batch_size=dataloader_batch_size, shuffle=True
         )

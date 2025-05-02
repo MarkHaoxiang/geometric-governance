@@ -60,7 +60,7 @@ class ElectionData:
     def to_bipartite_graph(
         self,
         top_k_candidates: int | None = None,
-        vote_data: Literal["ranking", "utility"] = "utility",
+        vote_data: Literal["ranking", "utility", "ranking_unnormalised"] = "utility",
     ) -> Data:
         """An election can be represented as bipartite graph between voters and candidates.
 
@@ -88,11 +88,11 @@ class ElectionData:
         edge_index_list = []
         edge_attr_list = []
         for voter in range(self.num_voters):
-            if vote_data == "ranking":
+            if vote_data.startswith("ranking"):
                 votes = [
                     (
                         self.voter_ranked_order[voter, i],
-                        1 - (i / k),
+                        1 - (i / k) * (1 if vote_data == "ranking" else k),
                     )
                     for i in range(k)
                 ]

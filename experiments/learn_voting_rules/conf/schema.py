@@ -33,7 +33,7 @@ class Config(BaseModel):
     monotonicity_loss_batch_size: int
 
     # Model parameters
-    representation: Literal["graph", "set", "set_one_hot"]
+    representation: Literal["graph", "graph_unnormalised", "set", "set_one_hot"]
     model_size: Literal["small", "medium"]
 
     # Experiment utility

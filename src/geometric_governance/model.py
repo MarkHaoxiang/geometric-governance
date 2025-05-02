@@ -244,6 +244,8 @@ def create_election_model(
         one_hot = True
     else:
         one_hot = False
+    if representation == "graph_unnormalised":
+        representation = "graph"
     match representation, model_size:
         case "graph", "small":
             model = MessagePassingElectionModel(

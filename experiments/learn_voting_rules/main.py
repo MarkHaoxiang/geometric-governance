@@ -90,7 +90,7 @@ def main(cfg):
     experiment_name = (
         f"{cfg.representation}-election-{cfg.voting_rule}-{cfg.model_size}"
     )
-    if cfg.representation != "graph":
+    if not cfg.representation.startswith("graph"):
         cfg.monotonicity_loss_train = False
         cfg.monotonicity_loss_calculate = False
     if cfg.monotonicity_loss_train:
@@ -214,7 +214,7 @@ def main(cfg):
             pbar.update(1)
 
     # Candidate number generalisation test
-    if cfg.representation == "graph":
+    if cfg.representation.startswith("graph"):
         model = torch.load(
             os.path.join(logger.checkpoint_dir, "model_best.pt"), weights_only=False
         )
