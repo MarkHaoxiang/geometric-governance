@@ -50,8 +50,8 @@ if __name__ == "__main__":
     cols = [
         ("graph", "medium"),  # GEVN
         ("graph", "small"),  # GEVN (Small)
-        ("graph_unnormalised", "medium"),
-        ("graph_unnormalised", "small"),
+        # ("graph_unnormalised", "medium"),
+        # ("graph_unnormalised", "small"),
         ("set", "medium"),  # DeepSets
         ("set", "small"),  # DeepSets (Small)
         ("set_one_hot", "medium"),
@@ -59,13 +59,12 @@ if __name__ == "__main__":
     ]
 
     table_str = f"""table(
-        columns: 6,
+        columns: 8,
         table.header(
             table.vline(stroke: 0.5pt), [],[], table.vline(stroke: 0.5pt),
             [GEVN], [GEVN (Small)],
-            [GEVN], [GEVN (Small)],
             [DeepSets], [DeepSets (Small)],
-            [DeepSets (Anil)], [DeepSets (Anil, Small)],
+            [DeepSets OneHot], [DeepSets OneHot (Small)],
             table.vline(stroke: 0.5pt)
         ),
     {
