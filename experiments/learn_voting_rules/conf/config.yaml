@@ -4,7 +4,7 @@ defaults:
 voting_rule: minimax
 dataloader_batch_size: 128
 train_dataset:
-  dataset_size: 100000
+  dataset_size: 1000
   num_voters: [3, 50]
   num_candidates: [2, 10]
   seed: 42

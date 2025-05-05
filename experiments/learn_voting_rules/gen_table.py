@@ -2,7 +2,7 @@ from collections import defaultdict
 import numpy as np
 import wandb
 
-project_name = "geometric_governance/learn_voting_rules"
+project_name = "geometric-governance/learn_voting_rules"
 api = wandb.Api()
 
 
@@ -50,13 +50,24 @@ if __name__ == "__main__":
     cols = [
         ("graph", "medium"),  # GEVN
         ("graph", "small"),  # GEVN (Small)
+        ("graph_unnormalised", "medium"),
+        ("graph_unnormalised", "small"),
         ("set", "medium"),  # DeepSets
         ("set", "small"),  # DeepSets (Small)
+        ("set_one_hot", "medium"),
+        ("set_one_hot", "small"),
     ]
 
     table_str = f"""table(
         columns: 6,
-        table.header(table.vline(stroke: 0.5pt), [],[], table.vline(stroke: 0.5pt), [GEVN], [GEVN (Small)], [DeepSets], [DeepSets (Small)], table.vline(stroke: 0.5pt)),
+        table.header(
+            table.vline(stroke: 0.5pt), [],[], table.vline(stroke: 0.5pt),
+            [GEVN], [GEVN (Small)],
+            [GEVN], [GEVN (Small)],
+            [DeepSets], [DeepSets (Small)],
+            [DeepSets (Anil)], [DeepSets (Anil, Small)],
+            table.vline(stroke: 0.5pt)
+        ),
     {
         "".join(
             f'''
