@@ -244,9 +244,13 @@ def main(cfg):
             scheduler.step()
             pbar.update(1)
 
+    # Upload the best checkpoint on validation as a wandb artifact
+    best_model_path = os.path.join(logger.checkpoint_dir, "model_best.pt")
+    logger.upload_best_model(best_model_path)
+
     # Candidate number generalisation test
     model = torch.load(
-        os.path.join(logger.checkpoint_dir, "model_best.pt"), weights_only=False
+        best_model_path, weights_only=False
     )
     test_welfare, test_accuracy = run_evaluation(test_dataloader, model, cfg)
     logger.summary["test_loss"] = test_welfare

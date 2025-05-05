@@ -56,6 +56,12 @@ class Logger:
             mode=self.mode,
         )
 
+    def upload_best_model(self, best_model_path):
+        artifact = wandb.Artifact(name="best-model", type="model")
+        artifact.add_file(best_model_path)
+        wandb.log_artifact(artifact, aliases=["best", "latest"])
+        wandb.run.summary["best_model_artifact"] = "best-model:latest"
+
     @property
     def summary(self):
         return wandb.run.summary
