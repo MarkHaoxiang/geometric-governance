@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.data import Data
 from torch_geometric.nn import MLP, DeepSetsAggregation
-from torch_scatter import scatter_log_softmax, scatter_max
+from torch_scatter import scatter_log_softmax, scatter_max, scatter_min, scatter_add
 
 from geometric_governance.model.nn import MessagePassingLayer
 
@@ -23,7 +23,16 @@ class ElectionModel(nn.Module, ABC):
         raise NotImplementedError()
 
 
-class MessagePassingElectionModel(ElectionModel):
+class GraphElectionModel(ElectionModel, ABC):
+    def election(self, data):
+        log_probs = self(data)
+        winner_idxs = scatter_max(log_probs, data.batch[data.candidate_idxs])[1]
+        winners = torch.zeros_like(log_probs)
+        winners[winner_idxs] = 1
+        return ElectionResult(log_probs, winners)
+
+
+class MessagePassingElectionModel(GraphElectionModel):
     def __init__(
         self,
         edge_dim: int = 1,
@@ -62,7 +71,23 @@ class MessagePassingElectionModel(ElectionModel):
         out = scatter_log_softmax(logits, data.batch[data.candidate_idxs])
         return out
 
-    def election(self, data):
+
+class ManualElectionModel(ElectionModel):
+    def forward(self, data: Data):
+        vote_sum = scatter_add(data.edge_attr, index=data.edge_index[0], dim=0)
+        vote_sum = vote_sum[data.edge_index[0]]
+        normalised_votes = data.edge_attr / torch.maximum(
+            vote_sum, torch.ones_like(vote_sum)
+        )
+
+        logits = scatter_add(
+            src=normalised_votes, index=data.edge_index[1].unsqueeze(-1), dim=0
+        )[data.candidate_idxs.nonzero()].squeeze()
+
+        out = scatter_log_softmax(logits, data.batch[data.candidate_idxs])
+        return out
+
+    def election(self, data: Data):
         log_probs = self(data)
         winner_idxs = scatter_max(log_probs, data.batch[data.candidate_idxs])[1]
         winners = torch.zeros_like(log_probs)

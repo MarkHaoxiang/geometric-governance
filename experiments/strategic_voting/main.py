@@ -3,8 +3,6 @@ import warnings
 
 import hydra
 import torch
-from torch_geometric.data import Data
-from torch_scatter import scatter_log_softmax, scatter_add, scatter_max
 from tqdm import tqdm
 
 
@@ -12,6 +10,7 @@ from geometric_governance.util import (
     Logger,
     get_parameter_count,
     omega_to_pydantic,
+    DATA_DIR,
     cuda as device,
 )
 from geometric_governance.train import (
@@ -21,8 +20,9 @@ from geometric_governance.train import (
 )
 from geometric_governance.model import (
     ElectionModel,
-    ElectionResult,
+    StrategyModel,
     DeepSetStrategyModel,
+    NoStrategy,
     create_election_model,
 )
 from conf.schema import Config
@@ -30,7 +30,10 @@ from dataset import Dataloader, load_dataloader
 
 
 def run_evaluation(
-    dataloader: Dataloader, election_model: ElectionModel, strategy_model, cfg: Config
+    dataloader: Dataloader,
+    election_model: ElectionModel,
+    strategy_model: StrategyModel,
+    cfg: Config,
 ) -> float:
     election_model.eval()
     strategy_model.eval()
@@ -83,34 +86,6 @@ def run_evaluation(
     return mean_welfare
 
 
-class ManualElectionModel(ElectionModel):
-    def forward(self, data: Data):
-        vote_sum = scatter_add(data.edge_attr, index=data.edge_index[0], dim=0)
-        vote_sum = vote_sum[data.edge_index[0]]
-        normalised_votes = data.edge_attr / torch.maximum(
-            vote_sum, torch.ones_like(vote_sum)
-        )
-
-        logits = scatter_add(
-            src=normalised_votes, index=data.edge_index[1].unsqueeze(-1), dim=0
-        )[data.candidate_idxs.nonzero()].squeeze()
-
-        out = scatter_log_softmax(logits, data.batch[data.candidate_idxs])
-        return out
-
-    def election(self, data: Data):
-        log_probs = self(data)
-        winner_idxs = scatter_max(log_probs, data.batch[data.candidate_idxs])[1]
-        winners = torch.zeros_like(log_probs)
-        winners[winner_idxs] = 1
-        return ElectionResult(log_probs, winners)
-
-
-class NoStrategy(torch.nn.Module):
-    def forward(self, edge_attr, edge_index):
-        return edge_attr
-
-
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg):
     cfg = omega_to_pydantic(cfg, Config)
@@ -119,7 +94,6 @@ def main(cfg):
     train_dataloader, val_dataloader, test_dataloader = (
         load_dataloader(
             welfare_rule=cfg.welfare_rule,
-            vote_data=cfg.vote_data,
             vote_source=cfg.vote_source,
             dataloader_batch_size=cfg.dataloader_batch_size,
             **dataset.model_dump(),
@@ -134,36 +108,48 @@ def main(cfg):
         )
 
     # Election model definition
-    if cfg.election_model.use_manual_election:
-        election_model = ManualElectionModel()
-        model_name = "manual"
-    else:
-        if cfg.election_model.from_pretrained:
-            model_name = f"{cfg.election_model.from_pretrained}.pt"
-            model_path = os.path.join("pretrained_models", model_name)
-            if not os.path.exists(model_path):
-                raise ValueError(f"{model_name} not found.")
-            election_model = torch.load(model_path, weights_only=False)
-            election_model.to(device=device)
+    model_name = f"{cfg.vote_source}-utility-{cfg.welfare_rule}-welfare-{cfg.election_model.size}-sum"
+
+    def load_model(folder: str) -> ElectionModel:
+        path = os.path.join(DATA_DIR, folder, model_name, "model_best.pt")
+        if os.path.exists(path):
+            model = torch.load(path, weights_only=False)
+            model.to(device=device)
         else:
+            raise ValueError(f"{model_name} not found in {path}.")
+        return model
+
+    match cfg.election_model.from_pretrained:
+        case "default":
+            election_model = load_model(folder="welfare_checkpoints")
+        case "robust":
+            election_model = load_model(folder="robust_checkpoints")
+        case None:
             election_model = create_election_model(
                 representation="graph", model_size=cfg.election_model.size
             ).to(device=device)
-            model_name = f"gevn-{cfg.election_model.size}"
-        print(f"election parameter_count: {get_parameter_count(election_model)}")
+
+    print(f"election parameter_count: {get_parameter_count(election_model)}")
 
     # Strategy model definition
+    match cfg.vote_source:
+        case "movielens":
+            constraint = ("range", (0.5, 5))
+        case "dirichlet":
+            constraint = ("sum", 1)
+        case _:
+            raise NotImplementedError()
+
     if cfg.strategy_module_enable:
-        strategy_model = DeepSetStrategyModel(edge_dim=1, emb_dim=32).to(device=device)
+        strategy_model = DeepSetStrategyModel(
+            edge_dim=1, emb_dim=32, constraint=constraint
+        ).to(device=device)
         print(f"strategy parameter_count: {get_parameter_count(strategy_model)}")
     else:
         strategy_model = NoStrategy()
 
     # Optimiser and Scheduler
-    is_training_election = (
-        not cfg.election_model.freeze_weights
-        and not cfg.election_model.use_manual_election
-    )
+    is_training_election = not cfg.election_model.freeze_weights
     if is_training_election:
         e_optim, e_scheduler = make_optim_and_scheduler(
             election_model,
@@ -182,7 +168,7 @@ def main(cfg):
         )
 
     freeze = "freeze" if cfg.election_model.freeze_weights else "train"
-    experiment_name = f"{cfg.vote_source}-{cfg.vote_data}-{cfg.welfare_rule}-{cfg.election_model.size}-{freeze}-{model_name}"
+    experiment_name = f"{cfg.vote_source}-{cfg.welfare_rule}-{cfg.election_model.size}-{freeze}-{model_name}"
     if cfg.monotonicity_loss_train:
         experiment_name += "-mono"
     logger = Logger(
@@ -391,6 +377,15 @@ def main(cfg):
 
             pbar.update(1)
 
+    # Save final model
+    if is_training_election:
+        path = os.path.join(logger.checkpoint_dir, "election_final.pt")
+        torch.save(election_model, path)
+        logger.upload_model(path, alias="election")
+    if cfg.strategy_module_enable:
+        path = os.path.join(logger.checkpoint_dir, "strategy_final.pt")
+        torch.save(strategy_model, path)
+        logger.upload_model(path, alias="strategy")
     # Candidate number generalisation test
     test_welfare = run_evaluation(test_dataloader, election_model, strategy_model, cfg)
     logger.summary["test_loss"] = test_welfare

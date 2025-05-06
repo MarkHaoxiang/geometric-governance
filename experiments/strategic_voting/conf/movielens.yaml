@@ -5,30 +5,29 @@ welfare_rule: utilitarian
 vote_source: movielens
 dataloader_batch_size: 128
 train_dataset:
-  dataset_size: 100000
-  num_voters: [3, 50]
-  num_candidates: [2, 10]
+  dataset_size: 5000
+  num_voters: [5, 10]
+  num_candidates: [3, 5]
   seed: 42
   shuffle: true
   recompute: false
 val_dataset:
-  dataset_size: 1280
-  num_voters: 75
-  num_candidates: 15
+  dataset_size: 512
+  num_voters: 20
+  num_candidates: 10
   seed: 16180
   shuffle: false
   recompute: false
 test_dataset:
-  dataset_size: 1280
-  num_voters: 100
-  num_candidates: 20
+  dataset_size: 512
+  num_voters: 20
+  num_candidates: 15
   seed: 314159
   shuffle: false
   recompute: false
 election_model:
-  use_manual_election: false
   size: small
-  from_pretrained: utilitarian_small_robust_5
+  from_pretrained: default
   freeze_weights: true
 train:
   num_epochs: 330

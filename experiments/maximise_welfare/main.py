@@ -246,12 +246,10 @@ def main(cfg):
 
     # Upload the best checkpoint on validation as a wandb artifact
     best_model_path = os.path.join(logger.checkpoint_dir, "model_best.pt")
-    logger.upload_best_model(best_model_path)
+    logger.upload_model(best_model_path)
 
     # Candidate number generalisation test
-    model = torch.load(
-        best_model_path, weights_only=False
-    )
+    model = torch.load(best_model_path, weights_only=False)
     test_welfare, test_accuracy = run_evaluation(test_dataloader, model, cfg)
     logger.summary["test_loss"] = test_welfare
     logger.summary["test_accuracy"] = test_accuracy

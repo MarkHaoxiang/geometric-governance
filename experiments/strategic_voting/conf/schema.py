@@ -15,17 +15,15 @@ class Dataset(BaseModel):
     recompute: bool = False
 
 
-class Model(BaseModel):
-    use_manual_election: bool
+class ElectionModel(BaseModel):
     size: Literal["small", "large"]
-    from_pretrained: None | str
+    from_pretrained: None | Literal["default", "robust"]
     freeze_weights: bool
 
 
 class Config(BaseModel):
     # Dataset parameters
     welfare_rule: Literal["utilitarian", "nash", "rawlsian"]
-    vote_data: Literal["ranking", "utility"]
     vote_source: DatasetSource
     dataloader_batch_size: int
     train_dataset: Dataset
@@ -45,7 +43,7 @@ class Config(BaseModel):
     monotonicity_loss_batch_size: int
 
     # Model
-    election_model: Model
+    election_model: ElectionModel
 
     # Experiment utility
     repeat_number: int | None = None

@@ -1,16 +1,63 @@
+from typing import Any, Literal
+
 import torch
 import torch.nn as nn
 from torch_scatter import scatter_add, scatter_softmax
 
 
-class DeepSetStrategyModel(nn.Module):
+class StrategyModel(nn.Module):
+    def __init__(
+        self, constraint: tuple[Literal["sum", "range", "none"], Any] = ("none", None)
+    ):
+        super().__init__()
+        self.constraint = constraint[0]
+        self.constraint_args = constraint[1]
+
+    def _strategise(self, edge_attr, edge_index):
+        raise NotImplementedError()
+
+    def forward(self, edge_attr, edge_index):
+        values = self._strategise(edge_attr, edge_index)
+        assert values.shape == edge_attr.shape
+
+        match self.constraint:
+            case "sum":
+                votes = (
+                    scatter_softmax(values, edge_index[0].unsqueeze(-1), dim=0)
+                    * self.constraint_args
+                )
+            case "range":
+                votes = torch.nn.functional.sigmoid(values)
+                minimum_value = self.constraint_args[0]
+                maximum_value = self.constraint_args[1]
+                votes = minimum_value + (maximum_value - minimum_value) * votes
+            case "none":
+                votes = values
+            case _:
+                raise ValueError(
+                    f"Unknown constraint {self.constraint}. Must be one of ['sum', 'range']"
+                )
+
+        return votes
+
+
+class NoStrategy(StrategyModel):
+    def __init__(self):
+        super().__init__(constraint=("none", None))
+
+    def _strategise(self, edge_attr, edge_index):
+        return edge_attr
+
+
+class DeepSetStrategyModel(StrategyModel):
     def __init__(
         self,
         edge_dim: int = 1,
         emb_dim: int = 32,
         num_layers: int = 2,
+        constraint: tuple[Literal["sum", "range"], Any] = ("sum", 1.0),
     ):
-        super().__init__()
+        super().__init__(constraint=constraint)
         self.emb_dim = emb_dim
         self.num_layers = num_layers
         self.vote_to_hidden = nn.Linear(edge_dim, emb_dim)
@@ -42,7 +89,7 @@ class DeepSetStrategyModel(nn.Module):
             nn.Linear(emb_dim, 1),
         )
 
-    def forward(self, edge_attr, edge_index):
+    def _strategise(self, edge_attr, edge_index):
         # Updates the votes (each row in edge_attr) according to a DeepSet model,
         # aggregating votes made by the same voter
         # Note that there is no inter-voter co)mmunication
@@ -70,7 +117,6 @@ class DeepSetStrategyModel(nn.Module):
         new_edge_attr = torch.cat([hidden_edge_attr, new_edge_attr], dim=-1)
 
         votes = self.hidden_to_vote(new_edge_attr)
-        votes = scatter_softmax(votes, edge_index.unsqueeze(-1), dim=0)
         return votes
 
 
@@ -87,7 +133,7 @@ class MLPStrategyModel(nn.Module):
         )
         self.num_candidates = num_candidates
 
-    def forward(self, edge_attr: torch.Tensor, edge_index, candidate_idxs):
+    def forward(self, edge_attr: torch.Tensor, edge_index):
         # Reshape edge attr to be of shape (num_voters, num_candidates)
         votes = edge_attr.reshape(-1, self.num_candidates)
         votes = self.net(votes)
