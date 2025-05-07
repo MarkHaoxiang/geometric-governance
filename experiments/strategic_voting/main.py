@@ -86,7 +86,7 @@ def run_evaluation(
     return mean_welfare
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
+@hydra.main(version_base=None, config_path="conf", config_name="synthetic")
 def main(cfg):
     cfg = omega_to_pydantic(cfg, Config)
 
@@ -137,6 +137,8 @@ def main(cfg):
             constraint = ("range", (0.5, 5))
         case "dirichlet":
             constraint = ("sum", 1)
+        case "spatial":
+            constraint = ("range", (0, 1))
         case _:
             raise NotImplementedError()
 

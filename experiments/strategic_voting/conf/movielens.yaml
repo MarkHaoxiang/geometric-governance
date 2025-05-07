@@ -41,5 +41,5 @@ logging_mode: disabled
 monotonicity_loss_calculate: false
 monotonicity_loss_train: false
 monotonicity_loss_batch_size: 32
-strategy_module_enable: true
+strategy_module_enable: false
 strategy_p: 0.2
