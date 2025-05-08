@@ -170,7 +170,11 @@ def main(cfg):
         )
 
     freeze = "freeze" if cfg.election_model.freeze_weights else "train"
-    experiment_name = f"{cfg.vote_source}-{cfg.welfare_rule}-{cfg.election_model.size}-{freeze}-{model_name}"
+    experiment_name = (
+        f"{cfg.vote_source}-{cfg.welfare_rule}-{cfg.election_model.size}-{freeze}"
+    )
+    if cfg.election_model.from_pretrained:
+        experiment_name += f"-{cfg.election_model.from_pretrained}"
     if cfg.monotonicity_loss_train:
         experiment_name += "-mono"
     logger = Logger(
