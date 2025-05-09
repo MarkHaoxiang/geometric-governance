@@ -26,7 +26,6 @@ test_dataset:
   shuffle: false
   recompute: false
 election_model:
-  use_manual_election: false
   size: small
   from_pretrained: default
   freeze_weights: false

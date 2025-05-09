@@ -6,21 +6,21 @@ vote_source: movielens
 dataloader_batch_size: 128
 train_dataset:
   dataset_size: 5000
-  num_voters: [5, 10]
-  num_candidates: [3, 5]
+  num_voters: [10, 25]
+  num_candidates: [3, 7]
   seed: 42
   shuffle: true
   recompute: false
 val_dataset:
   dataset_size: 512
-  num_voters: 20
+  num_voters: 30
   num_candidates: 10
   seed: 16180
   shuffle: false
   recompute: false
 test_dataset:
   dataset_size: 512
-  num_voters: 20
+  num_voters: 45
   num_candidates: 15
   seed: 314159
   shuffle: false
@@ -37,9 +37,9 @@ train:
   learning_rate_warm_restart: false
   clip_grad_norm: 1.0
 logging_checkpoint_interval: 5
-logging_mode: disabled
+logging_mode: online
 monotonicity_loss_calculate: false
 monotonicity_loss_train: false
 monotonicity_loss_batch_size: 32
-strategy_module_enable: false
+strategy_module_enable: true
 strategy_p: 0.2
