@@ -1,5 +1,6 @@
 import os
 import warnings
+from typing import Literal
 
 import hydra
 import torch
@@ -108,10 +109,8 @@ def main(cfg):
         )
 
     # Election model definition
-    model_name = f"{cfg.vote_source}-utility-{cfg.welfare_rule}-welfare-{cfg.election_model.size}-sum"
-
-    def load_model(folder: str) -> ElectionModel:
-        path = os.path.join(DATA_DIR, folder, model_name, "model_best.pt")
+    def load_model(folder: str, model_name: str, model_id: str) -> ElectionModel:
+        path = os.path.join(DATA_DIR, folder, model_name, model_id)
         if os.path.exists(path):
             model = torch.load(path, weights_only=False)
             model.to(device=device)
@@ -121,15 +120,27 @@ def main(cfg):
 
     match cfg.election_model.from_pretrained:
         case "default":
-            election_model = load_model(folder="welfare_checkpoints")
+            model_name = f"{cfg.vote_source}-utility-{cfg.welfare_rule}-welfare-{cfg.election_model.size}-sum"
+            election_model = load_model(
+                folder="welfare_checkpoints",
+                model_name=model_name,
+                model_id="model_best.pt",
+            )
         case "robust":
-            election_model = load_model(folder="robust_checkpoints")
+            model_name = f"{cfg.vote_source}-{cfg.welfare_rule}-{cfg.election_model.size}-train-default"
+            if cfg.repeat_number is None:
+                model_name = model_name + "/None"
+            else:
+                model_name = model_name + "/" + str(cfg.repeat_number)
+            election_model = load_model(
+                folder="robust_checkpoints",
+                model_name=model_name,
+                model_id="election_final.pt",
+            )
         case None:
             election_model = create_election_model(
                 representation="graph", model_size=cfg.election_model.size
             ).to(device=device)
-
-    print(f"election parameter_count: {get_parameter_count(election_model)}")
 
     # Strategy model definition
     match cfg.vote_source:
