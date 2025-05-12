@@ -17,6 +17,8 @@ window_size = 25 # Number of epochs to calculate moving average over
 datasets = ["dirichlet", "spatial", "movielens"]
 vote_datas = ["ranking", "utility"]
 
+welfare_data = False # Toggle between plotting val/welfare (True), or val/accuracy (False)
+
 for dataset, vote_data in itertools.product(datasets, vote_datas):
     welfare_rules = ["utilitarian", "nash", "rawlsian"]
     losses = ["welfare", "rule"]
@@ -25,10 +27,10 @@ for dataset, vote_data in itertools.product(datasets, vote_datas):
 
     for i, welfare_rule in enumerate(tqdm(welfare_rules)):
         ax = axs[i % 3]
-        ax.set_title(welfare_rule)
+        ax.set_title(welfare_rule.title())
 
         if i % 3 == 0:
-            ax.set_ylabel("Validation Welfare")
+            ax.set_ylabel("Validation Welfare") if welfare_data else ax.set_ylabel("Validation Accuracy")
 
         for j, loss in enumerate(losses):
             filters = {
@@ -41,8 +43,9 @@ for dataset, vote_data in itertools.product(datasets, vote_datas):
             num_epochs = 330
 
             for run in runs:
-                history = run.history(keys=["val/welfare"], samples=num_epochs)
-                validation_welfare.append(history["val/welfare"].to_numpy()[:num_epochs])
+                data = "val/welfare" if welfare_data else "val/accuracy"
+                history = run.history(keys=[data], samples=num_epochs)
+                validation_welfare.append(history[data].to_numpy()[:num_epochs])
             validation_welfare = np.stack(validation_welfare)
 
             color = "blue" if loss=="welfare" else "red"
@@ -54,10 +57,15 @@ for dataset, vote_data in itertools.product(datasets, vote_datas):
 
             std = np.std(validation_welfare, axis=0)
             std = moving_average(std, window_size)
+            std_top = mean + std
+            std_bottom = mean - std
+            if not welfare_data:
+                std_top = std_top.clip(min=0., max=1.)
+                std_bottom = std_bottom.clip(min=0., max=1.)
             ax.fill_between(
                 np.arange(num_epochs)[window_size - 1:],
-                mean + std,
-                mean - std,
+                std_top,
+                std_bottom,
                 color=color,
                 alpha=0.2,
                 interpolate=True,
@@ -69,4 +77,5 @@ for dataset, vote_data in itertools.product(datasets, vote_datas):
 
     fig.suptitle(f"{dataset.title()} dataset + {vote_data.title()} voting data", fontsize=16)
     plt.tight_layout()
-    fig.savefig(f"{dataset}-{vote_data}-welfare_loss_plots", dpi=400)
+    plot_name = f"{dataset}-{vote_data}-welfare_loss_plots" if welfare_data else f"{dataset}-{vote_data}-accuracy-welfare_loss_plots"
+    fig.savefig(plot_name, dpi=400)
