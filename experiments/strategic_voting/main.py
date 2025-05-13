@@ -1,6 +1,5 @@
 import os
 import warnings
-from typing import Literal
 
 import hydra
 import torch

@@ -12,7 +12,7 @@ from geometric_governance.util import (
     get_max,
     DATA_DIR as _DATA_DIR,
 )
-from geometric_governance.data import SetDataset, generate_dirichlet_election
+from geometric_governance.data import DatasetSource, SetDataset, DatasetRegistry
 from geometric_governance.objective import VotingRulesRegistry
 
 DATA_DIR = os.path.join(_DATA_DIR, "learn_voting_rules")
@@ -25,6 +25,7 @@ def generate_rule_dataset(
     num_voters_range: RangeOrValue,
     num_candidates_range: RangeOrValue,
     voting_rule: str,
+    vote_source: DatasetSource,
     representation: Literal["set", "set_one_hot", "graph", "graph_unnormalised"],
     seed: int,
 ):
@@ -36,7 +37,8 @@ def generate_rule_dataset(
             num_voters = get_value(num_voters_range, rng)
             num_candidates = get_value(num_candidates_range, rng)
 
-            election_data = generate_dirichlet_election(
+            election_src = DatasetRegistry[vote_source]
+            election_data = election_src(
                 num_voters=num_voters, num_candidates=num_candidates, rng=rng
             )
 
@@ -110,6 +112,7 @@ def load_dataloader(
             num_voters,
             num_candidates,
             voting_rule,
+            "dirichlet",
             representation,
             seed,
         )
