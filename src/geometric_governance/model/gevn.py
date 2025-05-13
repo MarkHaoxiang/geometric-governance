@@ -146,11 +146,11 @@ def create_election_model(
     match representation, model_size:
         case "graph", "small":
             model = MessagePassingElectionModel(
-                node_emb_dim=80, edge_emb_dim=20, num_layers=4, edge_dim=1, aggr=aggr
+                node_emb_dim=58, edge_emb_dim=19, num_layers=4, edge_dim=1, aggr=aggr
             )
         case "graph", "medium":
             model = MessagePassingElectionModel(
-                node_emb_dim=256, edge_emb_dim=64, num_layers=4, edge_dim=1, aggr=aggr
+                node_emb_dim=185, edge_emb_dim=60, num_layers=4, edge_dim=1, aggr=aggr
             )
         case "set", "small":
             assert num_candidates is not None, ""

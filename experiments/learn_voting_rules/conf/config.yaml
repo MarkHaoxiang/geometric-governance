@@ -1,4 +1,4 @@
-defaults:
+faults:
   - _self_
 
 voting_rule: minimax
@@ -33,5 +33,5 @@ logging_mode: online
 monotonicity_loss_calculate: false
 monotonicity_loss_train: false
 monotonicity_loss_batch_size: 32
-representation: graph_unnormalised
-model_size: medium
+representation: graph
+model_size: small
