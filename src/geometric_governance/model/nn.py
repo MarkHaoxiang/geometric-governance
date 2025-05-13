@@ -19,6 +19,13 @@ class MessagePassingLayer(MessagePassing):
             nn.Linear(node_dim, node_dim),
         )
 
+        self.update_mlp = nn.Sequential(
+            nn.Linear(2 * node_dim, node_dim),
+            nn.LayerNorm(node_dim),
+            nn.ReLU(),
+            nn.Linear(node_dim, node_dim),
+        )
+
         self.edge_utility_mlp = nn.Sequential(
             nn.Linear(2 * node_dim + edge_dim, edge_dim),
             nn.LayerNorm(edge_dim),
@@ -28,15 +35,18 @@ class MessagePassingLayer(MessagePassing):
 
     def forward(self, x, edge_index, edge_attr):
         new_x = self.propagate(edge_index, x=x, edge_attr=edge_attr)
-        new_x = x + new_x
 
         from_node, to_node = edge_index
         edge_features = torch.cat([x[from_node], x[to_node], edge_attr], dim=1)
         new_edge_attr = self.edge_utility_mlp(edge_features)
-        new_edge_attr = edge_attr + new_edge_attr
 
         return new_x, new_edge_attr
 
     def message(self, x_i, x_j, edge_attr):
         msg_features = torch.cat([x_i, x_j, edge_attr], dim=1)
         return self.message_mlp(msg_features)
+
+    def update(self, aggr_out, x, edge_attr):
+        node_update_features = torch.cat([x, aggr_out], dim=-1)
+        return self.update_mlp(node_update_features)
+
