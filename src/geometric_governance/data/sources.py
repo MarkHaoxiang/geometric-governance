@@ -111,10 +111,12 @@ def generate_movielens_dataset(
     min_rating_num: int = 20_000,
     max_retries: int = 10,
 ):
+    if rng is None:
+        rng = np.random.default_rng()
     df, movie_ids = _load_movielens_data(min_rating_num)
 
     while True:
-        movie_idxs = np.random.choice(movie_ids, size=num_candidates, replace=False)
+        movie_idxs = rng.choice(movie_ids, size=num_candidates, replace=False)
         df_filtered = df[df["movieId"].isin(movie_idxs)]
         voter_counts = df_filtered.groupby("userId").size()
         voter_idxs = voter_counts[voter_counts >= num_candidates].index

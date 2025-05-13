@@ -4,19 +4,19 @@ defaults:
 voting_rule: minimax
 dataloader_batch_size: 128
 train_dataset:
-  dataset_size: 1000
+  dataset_size: 100000
   num_voters: [3, 50]
   num_candidates: [2, 10]
   seed: 42
   recompute: false
 val_dataset:
-  dataset_size: 1000
+  dataset_size: 1280
   num_voters: 75
   num_candidates: 15
   seed: 16180
   recompute: false
 test_dataset:
-  dataset_size: 1000
+  dataset_size: 1280
   num_voters: 100
   num_candidates: 20
   seed: 314159
