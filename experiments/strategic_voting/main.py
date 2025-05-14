@@ -141,6 +141,8 @@ def main(cfg):
                 representation="graph", model_size=cfg.election_model.size
             ).to(device=device)
 
+    print(f"election parameter_count: {get_parameter_count(election_model)}")
+
     # Strategy model definition
     match cfg.vote_source:
         case "movielens":

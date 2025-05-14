@@ -1,4 +1,4 @@
-faults:
+defaults:
   - _self_
 
 voting_rule: minimax
