@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.data import Data
 from torch_geometric.nn import MLP, DeepSetsAggregation
-from torch_scatter import scatter_log_softmax, scatter_max, scatter_min, scatter_add
+from torch_scatter import scatter_log_softmax, scatter_max, scatter_add
 
 from geometric_governance.model.nn import MessagePassingLayer
 
