@@ -100,7 +100,9 @@ def main(cfg):
             cfg.monotonicity_loss_calculate = True
 
     logger = Logger(
-        project="learn_voting_rules",
+        project="learn_voting_rules"
+        if not cfg.monotonicity_loss_calculate
+        else "learn_voting_rules_mono",
         experiment_name=experiment_name,
         config=cfg.model_dump(),
         mode=cfg.logging_mode,
@@ -143,7 +145,7 @@ def main(cfg):
                     )
                     train_monotonicity_loss += monotonicity_loss.item()
                     if cfg.monotonicity_loss_train:
-                        loss += monotonicity_loss
+                        loss += monotonicity_loss * cfg.monotonicity_loss_weight
 
                 # Update weights
                 loss.backward()

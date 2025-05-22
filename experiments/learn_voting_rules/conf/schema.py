@@ -31,6 +31,7 @@ class Config(BaseModel):
     monotonicity_loss_calculate: bool
     monotonicity_loss_train: bool
     monotonicity_loss_batch_size: int
+    monotonicity_loss_weight: float = 1_000
 
     # Model parameters
     representation: Literal["graph", "graph_unnormalised", "set", "set_one_hot"]

@@ -55,7 +55,7 @@ def compute_monotonicity_loss(
             grad[edge_idxs] < 0,
             -grad[edge_idxs],
             torch.zeros_like(grad[edge_idxs]),
-        ).mean()
+        ).sum()
     loss /= batch_size
     return loss
 

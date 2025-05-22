@@ -22,7 +22,7 @@ test_dataset:
   seed: 314159
   recompute: False
 train:
-  num_epochs: 650
+  num_epochs: 170
   iterations_per_epoch: 25
   learning_rate: 0.0003
   learning_rate_warmup_epochs: 20
@@ -32,6 +32,7 @@ logging_checkpoint_interval: 5
 logging_mode: online
 monotonicity_loss_calculate: true
 monotonicity_loss_train: false
+monotonicity_loss_weight: 1000
 representation: graph
 model_size: small
 monotonicity_loss_batch_size: 32
