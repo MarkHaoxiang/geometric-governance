@@ -155,10 +155,23 @@ def main(cfg):
             raise NotImplementedError()
 
     if cfg.strategy_module_enable:
-        strategy_model = DeepSetStrategyModel(
-            edge_dim=1, emb_dim=32, constraint=constraint
-        ).to(device=device)
-        print(f"strategy parameter_count: {get_parameter_count(strategy_model)}")
+        match cfg.strategy_voter_information:
+            case "private":
+                # Each voter has information on their own utilities
+                strategy_model = DeepSetStrategyModel(
+                    edge_dim=1, emb_dim=32, constraint=constraint
+                ).to(device=device)
+            case "results":
+                # Each voter has information on their own utilites
+                # and the election scores given truthful voting
+                strategy_model = DeepSetStrategyModel(
+                    edge_dim=2, emb_dim=32, constraint=constraint
+                ).to(device=device)
+            case "public":
+                # Each voter has information on the full utility distribution
+                raise NotImplementedError()
+            case "comms":
+                raise NotImplementedError()
     else:
         strategy_model = NoStrategy()
 
@@ -222,6 +235,11 @@ def main(cfg):
                 election_loss = 0
                 data = next(train_iter).to(device)
 
+                if cfg.strategy_voter_information == "results":
+                    # Calculate results under truthful voting
+                    with torch.no_grad():
+                        truthful_election_result = election_model.election(data)
+
                 # Strategy Loss
                 strategy_loss = 0
                 if cfg.strategy_module_enable:
@@ -230,7 +248,35 @@ def main(cfg):
                     voter_to_batch = data.batch[voters]
 
                     truthful_votes = data.edge_attr
-                    strategic_votes = strategy_model(data.edge_attr, data.edge_index)
+
+                    match cfg.strategy_voter_information:
+                        case "private":
+                            strategic_votes = strategy_model(
+                                data.edge_attr, data.edge_index
+                            )
+                        case "results":
+                            edge_attr_candidates = data.edge_index[1]
+                            lookup = torch.full(
+                                size=(edge_attr_candidates.max() + 1,),
+                                fill_value=-torch.inf,
+                                device=device,
+                            )
+                            lookup[candidate_idxs_nonzero.squeeze()] = (
+                                truthful_election_result.log_probs
+                            )
+                            edge_attr_log_probs = lookup[edge_attr_candidates]
+                            strategic_votes = strategy_model(
+                                torch.cat(
+                                    [data.edge_attr, edge_attr_log_probs.unsqueeze(-1)],
+                                    dim=-1,
+                                ),
+                                data.edge_index,
+                            )
+                        case "public":
+                            raise NotImplementedError()
+                        case "comms":
+                            raise NotImplementedError()
+
                     strategic_votes_detached = strategic_votes.detach()
 
                     # p% of voters are strategic

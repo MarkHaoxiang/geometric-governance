@@ -37,9 +37,11 @@ train:
   learning_rate_warm_restart: false
   clip_grad_norm: 1.0
 logging_checkpoint_interval: 5
-logging_mode: online
+# logging_mode: online
+logging_mode: disabled
 monotonicity_loss_calculate: false
 monotonicity_loss_train: false
 monotonicity_loss_batch_size: 32
 strategy_module_enable: true
 strategy_p: 0.2
+strategy_voter_information: results

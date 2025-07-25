@@ -47,5 +47,8 @@ class Config(BaseModel):
 
     # Experiment utility
     repeat_number: int | None = None
+
+    # Strategy Module
     strategy_module_enable: bool
     strategy_p: float
+    strategy_voter_information: Literal["private", "results", "public", "comms"]

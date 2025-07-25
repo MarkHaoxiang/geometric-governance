@@ -18,7 +18,7 @@ class StrategyModel(nn.Module):
 
     def forward(self, edge_attr, edge_index):
         values = self._strategise(edge_attr, edge_index)
-        assert values.shape == edge_attr.shape
+        assert values.shape == (edge_attr.shape[0], 1)
 
         match self.constraint:
             case "sum":
