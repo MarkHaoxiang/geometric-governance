@@ -290,13 +290,13 @@ def main(cfg):
                     strategy_train_mask = torch.isin(data.edge_index[0], sampled_voters)
                     strategy_train_mask = strategy_train_mask.unsqueeze(-1)
 
+                    strategic_votes_mask = torch.isin(
+                        data.edge_index[0], strategic_voters.nonzero()
+                    ).unsqueeze(-1)
+
                     match cfg.strategy_voter_information:
                         case "private" | "public" | "results":
                             # Ensure selfishness by cutting gradients
-                            strategic_votes_mask = torch.isin(
-                                data.edge_index[0], strategic_voters.nonzero()
-                            ).unsqueeze(-1)
-
                             resulting_votes = torch.where(
                                 strategic_votes_mask,
                                 strategic_votes_detached,
@@ -308,7 +308,10 @@ def main(cfg):
                             final_strategic_votes = gradient_cut_strategic_votes
                         case "opinion":
                             # Selfishness is captured by the model definition
-                            final_strategic_votes = strategic_votes
+                            resulting_votes = torch.where(
+                                strategic_votes_mask, strategic_votes, truthful_votes
+                            )
+                            final_strategic_votes = resulting_votes
 
                     # Clone and modify votes
                     data_strategy = data.clone()
