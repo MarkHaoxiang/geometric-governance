@@ -51,4 +51,4 @@ class Config(BaseModel):
     # Strategy Module
     strategy_module_enable: bool
     strategy_p: float
-    strategy_voter_information: Literal["private", "results", "public", "comms"]
+    strategy_voter_information: Literal["private", "results", "public", "opinion"]

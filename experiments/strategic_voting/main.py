@@ -21,9 +21,14 @@ from geometric_governance.train import (
 from geometric_governance.model import (
     ElectionModel,
     StrategyModel,
-    DeepSetStrategyModel,
     NoStrategy,
     create_election_model,
+)
+from geometric_governance.model.gesn import (
+    DeepSetStrategyModel,
+    DeepSetStrategyModelWithResults,
+    MessagePassingStrategyModel,
+    OpinionPassingStrategyModel,
 )
 from conf.schema import Config
 from dataset import Dataloader, load_dataloader
@@ -47,7 +52,7 @@ def run_evaluation(
             voter_to_batch = data.batch[voters]
 
             truthful_votes = data.edge_attr
-            strategic_votes = strategy_model(data.edge_attr, data.edge_index)
+            strategic_votes = strategy_model(data)
 
             strategic_voters = (
                 torch.rand_like(voters, dtype=torch.float) < cfg.strategy_p
@@ -159,21 +164,35 @@ def main(cfg):
             case "private":
                 # Each voter has information on their own utilities
                 strategy_model = DeepSetStrategyModel(
-                    edge_dim=1, emb_dim=32, constraint=constraint
-                ).to(device=device)
+                    emb_dim=32, num_layers=2, constraint=constraint
+                )
             case "results":
-                # Each voter has information on their own utilites
-                # and the election scores given truthful voting
-                strategy_model = DeepSetStrategyModel(
-                    edge_dim=2, emb_dim=32, constraint=constraint
-                ).to(device=device)
+                strategy_model = DeepSetStrategyModelWithResults(
+                    election_model=election_model,
+                    emb_dim=32,
+                    num_layers=2,
+                    constraint=constraint,
+                )
             case "public":
                 # Each voter has information on the full utility distribution
-                raise NotImplementedError()
-            case "comms":
-                raise NotImplementedError()
+                strategy_model = MessagePassingStrategyModel(
+                    edge_dim=1,
+                    node_emb_dim=32,
+                    edge_emb_dim=8,
+                    num_layers=2,
+                    aggr="add",
+                )
+            case "opinion":
+                strategy_model = OpinionPassingStrategyModel(
+                    edge_dim=1,
+                    node_emb_dim=32,
+                    edge_emb_dim=8,
+                    num_layers=2,
+                    aggr="add",
+                )
     else:
         strategy_model = NoStrategy()
+    strategy_model.to(device=device)
 
     # Optimiser and Scheduler
     is_training_election = not cfg.election_model.freeze_weights
@@ -203,7 +222,7 @@ def main(cfg):
     if cfg.monotonicity_loss_train:
         experiment_name += "-mono"
     logger = Logger(
-        project="strategic-voting",
+        project=f"strategic-voting-{cfg.strategy_voter_information}",
         experiment_name=experiment_name,
         config=cfg.model_dump(),
         mode=cfg.logging_mode,
@@ -217,28 +236,22 @@ def main(cfg):
         cfg.monotonicity_loss_calculate = True
 
     with tqdm(range(cfg.train.num_epochs)) as pbar:
-        election_model.train()
-        strategy_model.train()
         for epoch in range(cfg.train.num_epochs):
             # Train
+            election_model.train()
+            strategy_model.train()
+
             train_loss = 0
             train_welfare_loss = 0
             train_strategy_loss = 0
             train_monotonicity_loss = 0
             train_welfare = 0
 
-            election_model.train()
-
             train_iter = iter(train_dataloader)
 
             for _ in range(cfg.train.iterations_per_epoch):
                 election_loss = 0
                 data = next(train_iter).to(device)
-
-                if cfg.strategy_voter_information == "results":
-                    # Calculate results under truthful voting
-                    with torch.no_grad():
-                        truthful_election_result = election_model.election(data)
 
                 # Strategy Loss
                 strategy_loss = 0
@@ -249,71 +262,57 @@ def main(cfg):
 
                     truthful_votes = data.edge_attr
 
-                    match cfg.strategy_voter_information:
-                        case "private":
-                            strategic_votes = strategy_model(
-                                data.edge_attr, data.edge_index
-                            )
-                        case "results":
-                            edge_attr_candidates = data.edge_index[1]
-                            lookup = torch.full(
-                                size=(edge_attr_candidates.max() + 1,),
-                                fill_value=-torch.inf,
-                                device=device,
-                            )
-                            lookup[candidate_idxs_nonzero.squeeze()] = (
-                                truthful_election_result.log_probs
-                            )
-                            edge_attr_log_probs = lookup[edge_attr_candidates]
-                            strategic_votes = strategy_model(
-                                torch.cat(
-                                    [data.edge_attr, edge_attr_log_probs.unsqueeze(-1)],
-                                    dim=-1,
-                                ),
-                                data.edge_index,
-                            )
-                        case "public":
-                            raise NotImplementedError()
-                        case "comms":
-                            raise NotImplementedError()
-
-                    strategic_votes_detached = strategic_votes.detach()
-
                     # p% of voters are strategic
+                    # Subsampled so each individual election, percentage may vary
                     strategic_voters = (
                         torch.rand_like(voters, dtype=torch.float) < cfg.strategy_p
                     )
 
-                    # Select a train voter from each batch
-                    rand_indices = torch.stack(
-                        [
-                            torch.where(voter_to_batch == batch)[0][
-                                torch.randint(0, (voter_to_batch == batch).sum(), (1,))
+                    # 1 voter per batch is seletced to train
+                    training_voter_idxs = []
+                    for batch in range(data.batch[-1] + 1):
+                        batch_voters = torch.where(voter_to_batch == batch)[0]
+                        training_voter_idxs.append(
+                            batch_voters[
+                                torch.randint(low=0, high=len(batch_voters), size=(1,))
                             ].squeeze()
-                            for batch in range(data.batch[-1] + 1)
-                        ]
-                    )
-                    sampled_voters = voters[rand_indices]
-                    strategic_voters[rand_indices] = True
+                        )
+                    training_voter_idxs = torch.stack(training_voter_idxs)
+                    sampled_voters = voters[training_voter_idxs]
+                    strategic_voters[training_voter_idxs] = True
 
-                    # Create gradient mask
+                    # Run strategy model
+                    strategic_votes = strategy_model(
+                        data=data, train_agent_idxs=voters[training_voter_idxs]
+                    )
+                    strategic_votes_detached = strategic_votes.detach()
+
                     strategy_train_mask = torch.isin(data.edge_index[0], sampled_voters)
                     strategy_train_mask = strategy_train_mask.unsqueeze(-1)
-                    strategic_votes_mask = torch.isin(
-                        data.edge_index[0], strategic_voters.nonzero()
-                    ).unsqueeze(-1)
 
-                    # Cut gradients
-                    resulting_votes = torch.where(
-                        strategic_votes_mask, strategic_votes_detached, truthful_votes
-                    )
-                    gradient_cut_strategic_votes = torch.where(
-                        strategy_train_mask, strategic_votes, resulting_votes
-                    )
+                    match cfg.strategy_voter_information:
+                        case "private" | "public" | "results":
+                            # Ensure selfishness by cutting gradients
+                            strategic_votes_mask = torch.isin(
+                                data.edge_index[0], strategic_voters.nonzero()
+                            ).unsqueeze(-1)
+
+                            resulting_votes = torch.where(
+                                strategic_votes_mask,
+                                strategic_votes_detached,
+                                truthful_votes,
+                            )
+                            gradient_cut_strategic_votes = torch.where(
+                                strategy_train_mask, strategic_votes, resulting_votes
+                            )
+                            final_strategic_votes = gradient_cut_strategic_votes
+                        case "opinion":
+                            # Selfishness is captured by the model definition
+                            final_strategic_votes = strategic_votes
 
                     # Clone and modify votes
                     data_strategy = data.clone()
-                    data_strategy.edge_attr = gradient_cut_strategic_votes
+                    data_strategy.edge_attr = final_strategic_votes
 
                     vote_probabilities = torch.exp(
                         election_model.election(data_strategy).log_probs
