@@ -24,6 +24,7 @@ dependencies = [
     # Manually install torch_scatter
     # uv pip install torch-scatter -f https://data.pyg.org/whl/torch-2.5.0+$(CUDA_VERSION)$.html
     "seaborn>=0.13.2",
+    "scipy>=1.16.0",
 ]
 
 [build-system]
