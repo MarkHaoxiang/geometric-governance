@@ -92,7 +92,7 @@ class ElectionData:
                 votes = [
                     (
                         self.voter_ranked_order[voter, i],
-                        1 - (i / k) * (1 if vote_data == "ranking" else k),
+                        (1 - (i / k)) if vote_data == "ranking" else (k - i),
                     )
                     for i in range(k)
                 ]
