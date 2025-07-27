@@ -249,7 +249,12 @@ class OpinionPassingStrategyModel(StrategyModel):
         )
         for conv in self.convs:
             new_x, new_edge = conv(
-                x, data.edge_index, edge_attr, train_agent_idxs, strategic_mask
+                x,
+                data.edge_index,
+                edge_attr,
+                data.candidate_idxs,
+                train_agent_idxs,
+                strategic_mask,
             )
             x = x + new_x
             edge_attr = edge_attr + new_edge

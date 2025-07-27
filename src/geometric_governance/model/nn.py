@@ -95,14 +95,17 @@ class OpinionPassingLayer(MessagePassing):
         x,
         edge_index,
         edge_attr,
+        candidate_mask: torch.Tensor | None = None,
         train_agent_idxs: torch.Tensor | None = None,
         train_mask: torch.Tensor | None = None,
     ):
         if self.training:
+            assert candidate_mask is not None
             assert train_agent_idxs is not None
             assert train_mask is not None
-            self.strategic_agent_idxs = train_agent_idxs
-            self.strategic_mask = train_mask
+            self.candidate_mask = candidate_mask
+            self.train_agent_idxs = train_agent_idxs
+            self.train_mask = train_mask
             self.frozen_message_mlp = make_detached_clone(self.message_mlp)
             self.frozen_update_mlp = make_detached_clone(self.update_mlp)
             self.frozen_edge_mlp = make_detached_clone(self.edge_mlp)
@@ -115,9 +118,7 @@ class OpinionPassingLayer(MessagePassing):
         new_edge_attr = self.edge_mlp(edge_features)
         if self.training:
             frozen_new_edge_attr = self.frozen_edge_mlp(edge_features)
-            new_edge_attr[self.strategic_mask] = frozen_new_edge_attr[
-                self.strategic_mask
-            ]
+            new_edge_attr[self.train_mask] = frozen_new_edge_attr[self.train_mask]
 
         return new_x, new_edge_attr
 
@@ -127,7 +128,7 @@ class OpinionPassingLayer(MessagePassing):
         msg = self.message_mlp(msg_features)
         if self.training:
             frozen_msg = self.frozen_message_mlp(msg_features)
-            msg[self.strategic_mask] = frozen_msg[self.strategic_mask]
+            msg[self.train_mask] = frozen_msg[self.train_mask]
 
         return msg
 
@@ -137,6 +138,12 @@ class OpinionPassingLayer(MessagePassing):
         new_x = self.update_mlp(node_update_features)
         if self.training:
             frozen_new_x = self.frozen_update_mlp(node_update_features)
-            new_x[~self.strategic_agent_idxs] = frozen_new_x[~self.strategic_agent_idxs]
+            out_x = frozen_new_x
+            # Accumulate from training nodes
+            out_x[self.train_agent_idxs] = new_x[self.train_agent_idxs]
+            # Accumulate from candidate nodes
+            out_x = torch.where(self.candidate_mask, out_x, new_x)
+
+            new_x[~self.train_agent_idxs] = frozen_new_x[~self.train_agent_idxs]
 
         return self.update_mlp(node_update_features)
