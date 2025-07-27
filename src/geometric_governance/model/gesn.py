@@ -48,17 +48,20 @@ class StrategyModel(nn.Module):
             case "none":
                 votes = values
             case "ordinal":
-                # Squeeze votes to (0, 1)
-                values = torch.nn.functional.sigmoid(values)
-                epsilon = self.constraint_args[0]
-                votes = soft_rank(
-                    values, regularization_strength=epsilon, direction="DESCENDING"
-                )
+                if self.training:
+                    epsilon = self.constraint_args[0]
+                    votes = soft_rank(
+                        values, regularization_strength=epsilon, direction="DESCENDING"
+                    )
+                else:
+                    # During inference, we can use the argsort to get the ordinal votes
+                    votes = torch.argsort(values, dim=0, descending=True)
             case _:
                 raise ValueError(
                     f"Unknown constraint {self.constraint}. Must be one of ['sum', 'range']"
                 )
 
+        assert votes.shape == edge_attr.shape
         return votes
 
 
