@@ -6,13 +6,18 @@ import torch.nn as nn
 from torch_scatter import scatter_add, scatter_softmax
 from torch_geometric.data import Data
 
+from geometric_governance.third_party.fast_soft_sort.pytorch_ops import soft_rank
 from geometric_governance.model.gevn import ElectionModel
 from geometric_governance.model.nn import MessagePassingLayer, OpinionPassingLayer
 
 
 class StrategyModel(nn.Module):
     def __init__(
-        self, constraint: tuple[Literal["sum", "range", "none"], Any] = ("none", None)
+        self,
+        constraint: tuple[Literal["sum", "range", "ordinal", "none"], Any] = (
+            "none",
+            None,
+        ),
     ):
         super().__init__()
         self.constraint = constraint[0]
@@ -42,6 +47,13 @@ class StrategyModel(nn.Module):
                 votes = minimum_value + (maximum_value - minimum_value) * votes
             case "none":
                 votes = values
+            case "ordinal":
+                # Squeeze votes to (0, 1)
+                values = torch.nn.functional.sigmoid(values)
+                epsilon = self.constraint_args[0]
+                votes = soft_rank(
+                    values, regularization_strength=epsilon, direction="DESCENDING"
+                )
             case _:
                 raise ValueError(
                     f"Unknown constraint {self.constraint}. Must be one of ['sum', 'range']"
