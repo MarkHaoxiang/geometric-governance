@@ -22,7 +22,7 @@ dependencies = [
     "pandas>=2.2.3",
     "jupyterlab >= 4.3.6",
     # Manually install torch_scatter
-    # uv pip install torch-scatter -f https://data.pyg.org/whl/torch-2.5.0+$(CUDA_VERSION)$.html
+    # uv pip install torch-scatter -f https://data.pyg.org/whl/torch-2.7.0+cu128.html
     "seaborn>=0.13.2",
     "scipy>=1.16.0",
 ]
