@@ -2,7 +2,7 @@ defaults:
   - _self_
 
 welfare_rule: nash
-vote_data: ranking
+vote_data: ranking_unnormalised
 vote_source: spatial
 dataloader_batch_size: 128
 train_dataset:
@@ -38,3 +38,4 @@ monotonicity_loss_batch_size: 32
 welfare_loss_enable: false
 model_size: small
 model_aggr: sum
+# constraint: [ordinal, 0.1]

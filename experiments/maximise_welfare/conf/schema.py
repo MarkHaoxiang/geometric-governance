@@ -1,9 +1,9 @@
-from typing import Literal
-from pydantic import BaseModel
-from geometric_governance.train import TrainingSchema
-from geometric_governance.util import RangeOrValue
+from typing import Any, Literal
 
 from geometric_governance.data import DatasetSource
+from geometric_governance.train import TrainingSchema
+from geometric_governance.util import RangeOrValue
+from pydantic import BaseModel
 
 
 class Dataset(BaseModel):
@@ -17,7 +17,7 @@ class Dataset(BaseModel):
 class Config(BaseModel):
     # Dataset parameters
     welfare_rule: Literal["utilitarian", "nash", "rawlsian"]
-    vote_data: Literal["ranking", "utility"]
+    vote_data: Literal["ranking", "utility", "ranking_unnormalised"]
     vote_source: DatasetSource
     dataloader_batch_size: int
     train_dataset: Dataset

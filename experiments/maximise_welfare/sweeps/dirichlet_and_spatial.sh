@@ -5,7 +5,7 @@ WELFARE_FNS=(utilitarian nash rawlsian)
 for fn in "${WELFARE_FNS[@]}"; do
   echo "Launching job for welfare fn=$fn"
   uv run python main.py -m -cn base \
-    "+vote_data=ranking,utility" \
+    "+vote_data=ranking_unnormalised" \
     "+welfare_loss_enable=true,false" \
     "+welfare_rule=$fn" \
     "+vote_source=dirichlet,spatial" \
