@@ -222,7 +222,9 @@ def main(cfg):
     if cfg.monotonicity_loss_train:
         experiment_name += "-mono"
     logger = Logger(
-        project=f"strategic-voting-{cfg.strategy_voter_information}",
+        project="strategic-voting"
+        if cfg.project_name is None
+        else f"strategic-voting-{cfg.project_name}",
         experiment_name=experiment_name,
         config=cfg.model_dump(),
         mode=cfg.logging_mode,

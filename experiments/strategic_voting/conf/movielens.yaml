@@ -1,6 +1,6 @@
 defaults:
   - _self_
-
+project_name: testing
 welfare_rule: utilitarian
 vote_source: movielens
 dataloader_batch_size: 128

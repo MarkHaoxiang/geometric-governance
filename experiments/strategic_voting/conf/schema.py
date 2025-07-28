@@ -22,6 +22,8 @@ class ElectionModel(BaseModel):
 
 
 class Config(BaseModel):
+    project_name: str | None
+
     # Dataset parameters
     welfare_rule: Literal["utilitarian", "nash", "rawlsian"]
     vote_source: DatasetSource
