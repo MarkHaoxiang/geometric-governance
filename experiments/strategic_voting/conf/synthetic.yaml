@@ -28,7 +28,7 @@ test_dataset:
 election_model:
   size: small
   from_pretrained: default
-  freeze_weights: false
+  freeze_weights: true
 train:
   num_epochs: 330
   iterations_per_epoch: 25
@@ -44,4 +44,4 @@ monotonicity_loss_train: false
 monotonicity_loss_batch_size: 32
 strategy_module_enable: true
 strategy_p: 0.2
-strategy_voter_information: opinion
+strategy_voter_information: public

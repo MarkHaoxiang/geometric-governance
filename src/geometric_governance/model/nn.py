@@ -142,7 +142,7 @@ class OpinionPassingLayer(MessagePassing):
             # Accumulate from training nodes
             out_x[self.train_agent_idxs] = new_x[self.train_agent_idxs]
             # Accumulate from candidate nodes
-            out_x = torch.where(self.candidate_mask, out_x, new_x)
+            out_x = torch.where(self.candidate_mask.unsqueeze(-1), out_x, new_x)
 
             new_x[~self.train_agent_idxs] = frozen_new_x[~self.train_agent_idxs]
 
