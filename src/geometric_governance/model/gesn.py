@@ -78,7 +78,7 @@ class DeepSetStrategyModel(StrategyModel):
         self,
         emb_dim: int = 32,
         num_layers: int = 2,
-        constraint: tuple[Literal["sum", "range"], Any] = ("sum", 1.0),
+        constraint: tuple[Literal["sum", "range", "ordinal", "none"], Any] = ("sum", 1.0),
     ):
         super().__init__(constraint=constraint)
         self.emb_dim = emb_dim
@@ -149,7 +149,7 @@ class DeepSetStrategyModelWithResults(DeepSetStrategyModel):
         election_model: ElectionModel,
         emb_dim: int = 32,
         num_layers: int = 2,
-        constraint: tuple[Literal["sum", "range"], Any] = ("sum", 1),
+        constraint: tuple[Literal["sum", "range", "ordinal", "none"], Any] = ("sum", 1),
     ):
         super().__init__(emb_dim=emb_dim, num_layers=num_layers, constraint=constraint)
         self.vote_to_hidden = nn.Linear(2, emb_dim)  # Increase edge dim by 1

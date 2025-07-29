@@ -43,3 +43,4 @@ monotonicity_loss_train: false
 monotonicity_loss_batch_size: 32
 strategy_module_enable: true
 strategy_p: 0.2
+use_rankings: true

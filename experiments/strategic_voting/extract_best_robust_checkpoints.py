@@ -10,7 +10,7 @@ if not os.path.exists(welfare_checkpoints_path):
 api = wandb.Api()
 
 entity_name = "geometric-governance"
-project_name = "strategic-voting"
+project_name = "strategic-voting-private"
 runs = api.runs(
     f"{entity_name}/{project_name}",
     filters={"config.election_model.from_pretrained": "default"},

@@ -101,6 +101,7 @@ def main(cfg):
             welfare_rule=cfg.welfare_rule,
             vote_source=cfg.vote_source,
             dataloader_batch_size=cfg.dataloader_batch_size,
+            use_rankings=cfg.use_rankings,
             **dataset.model_dump(),
         )
         for dataset in (cfg.train_dataset, cfg.val_dataset, cfg.test_dataset)
@@ -124,7 +125,11 @@ def main(cfg):
 
     match cfg.election_model.from_pretrained:
         case "default":
-            model_name = f"{cfg.vote_source}-utility-{cfg.welfare_rule}-welfare-{cfg.election_model.size}-sum"
+            if not cfg.use_rankings:
+                model_name = f"{cfg.vote_source}-utility-{cfg.welfare_rule}-welfare-{cfg.election_model.size}-sum"
+            else:
+                model_name = f"{cfg.vote_source}-ranking_unnormalised-{cfg.welfare_rule}-welfare-{cfg.election_model.size}-sum"
+
             election_model = load_model(
                 folder="welfare_checkpoints",
                 model_name=model_name,
@@ -158,6 +163,9 @@ def main(cfg):
             constraint = ("range", (0, 1))
         case _:
             raise NotImplementedError()
+
+    if cfg.use_rankings:
+        constraint = "ordinal"
 
     if cfg.strategy_module_enable:
         match cfg.strategy_voter_information:

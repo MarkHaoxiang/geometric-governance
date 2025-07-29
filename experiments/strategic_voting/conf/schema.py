@@ -16,7 +16,7 @@ class Dataset(BaseModel):
 
 
 class ElectionModel(BaseModel):
-    size: Literal["small", "large"]
+    size: Literal["small", "medium", "large"]
     from_pretrained: None | Literal["default", "robust"]
     freeze_weights: bool
 
@@ -54,3 +54,5 @@ class Config(BaseModel):
     strategy_module_enable: bool
     strategy_p: float
     strategy_voter_information: Literal["private", "results", "public", "opinion"]
+
+    use_rankings: bool = True

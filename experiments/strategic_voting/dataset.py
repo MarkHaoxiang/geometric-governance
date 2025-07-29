@@ -25,6 +25,7 @@ def generate_welfare_dataset(
     vote_source: DatasetSource,
     welfare_rule: Literal["utilitarian", "nash", "rawlsian"],
     seed: int,
+    use_rankings: bool,
 ):
     rng = np.random.default_rng(seed=seed)
     dataset = []
@@ -47,7 +48,8 @@ def generate_welfare_dataset(
             if winners.max() < 1.0:  # Tie
                 continue
 
-            graph = election_data.to_bipartite_graph(vote_data="utility")
+            vote_data = "ranking_unnormalised" if use_rankings else "utility"
+            graph = election_data.to_bipartite_graph(vote_data=vote_data)
             graph.winners = winners
             graph.welfare = welfare_value
 
@@ -72,10 +74,12 @@ def load_dataloader(
     seed: int,
     shuffle: bool = True,
     recompute: bool = True,
+    use_rankings: bool = True,
 ) -> tuple[Dataloader, Dataloader, Dataloader]:
+    vote_data = "ranking_unnormalised" if use_rankings else "utility"
     dataset_file = os.path.join(
         DATA_DIR,
-        f"{vote_source}_dataset_{dataset_size}_{num_voters}_{num_candidates}_utility_{welfare_rule}_{seed}.pt",
+        f"{vote_source}_dataset_{dataset_size}_{num_voters}_{num_candidates}_{vote_data}_{welfare_rule}_{seed}.pt",
     )
 
     if os.path.exists(dataset_file) and not recompute:
@@ -89,6 +93,7 @@ def load_dataloader(
             vote_source=vote_source,
             welfare_rule=welfare_rule,
             seed=seed,
+            use_rankings=use_rankings,
         )
 
         with open(dataset_file, "wb") as f:
