@@ -8,6 +8,8 @@ for fn in "${WELFARE_FNS[@]}"; do
     "election_model.freeze_weights=true" \
     "election_model.from_pretrained=robust" \
     "welfare_rule=$fn" \
+    "project_name=public" \
+    "strategy_voter_information=public" \
     "+repeat_number=range(5)" &
 done
 

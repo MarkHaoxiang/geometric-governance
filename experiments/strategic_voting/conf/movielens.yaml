@@ -1,6 +1,6 @@
 defaults:
   - _self_
-project_name: testing
+project_name: null
 welfare_rule: utilitarian
 vote_source: movielens
 dataloader_batch_size: 128
@@ -43,4 +43,8 @@ monotonicity_loss_train: false
 monotonicity_loss_batch_size: 32
 strategy_module_enable: true
 strategy_p: 0.2
+<<<<<<< HEAD
 use_rankings: true
+=======
+strategy_voter_information: public
+>>>>>>> 667e272 (New sweeps)

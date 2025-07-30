@@ -113,6 +113,12 @@ def main(cfg):
             f"train_iterations_per_epoch override to {cfg.train.iterations_per_epoch} as it is larger than the dataset size"
         )
 
+    project_name = (
+        "strategic-voting"
+        if cfg.project_name is None
+        else f"strategic-voting-{cfg.project_name}"
+    )
+
     # Election model definition
     def load_model(folder: str, model_name: str, model_id: str) -> ElectionModel:
         path = os.path.join(DATA_DIR, folder, model_name, model_id)
@@ -142,7 +148,7 @@ def main(cfg):
             else:
                 model_name = model_name + "/" + str(cfg.repeat_number)
             election_model = load_model(
-                folder="robust_checkpoints",
+                folder=f"robust_checkpoints/{project_name}",
                 model_name=model_name,
                 model_id="election_final.pt",
             )
@@ -230,9 +236,7 @@ def main(cfg):
     if cfg.monotonicity_loss_train:
         experiment_name += "-mono"
     logger = Logger(
-        project="strategic-voting"
-        if cfg.project_name is None
-        else f"strategic-voting-{cfg.project_name}",
+        project=project_name,
         experiment_name=experiment_name,
         config=cfg.model_dump(),
         mode=cfg.logging_mode,

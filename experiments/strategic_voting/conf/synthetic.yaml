@@ -1,6 +1,6 @@
 defaults:
   - _self_
-project_name: testing
+project_name: null
 welfare_rule: utilitarian
 vote_source: dirichlet
 dataloader_batch_size: 128
