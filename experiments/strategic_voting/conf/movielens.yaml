@@ -43,8 +43,5 @@ monotonicity_loss_train: false
 monotonicity_loss_batch_size: 32
 strategy_module_enable: true
 strategy_p: 0.2
-<<<<<<< HEAD
-use_rankings: true
-=======
 strategy_voter_information: public
->>>>>>> 667e272 (New sweeps)
+use_rankings: true
