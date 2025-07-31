@@ -171,7 +171,7 @@ def main(cfg):
             raise NotImplementedError()
 
     if cfg.use_rankings:
-        constraint = "ordinal"
+        constraint = ("ordinal", 0.7)
 
     if cfg.strategy_module_enable:
         match cfg.strategy_voter_information:
@@ -195,6 +195,7 @@ def main(cfg):
                     edge_emb_dim=8,
                     num_layers=2,
                     aggr="add",
+                    constraint=constraint,
                 )
             case "opinion":
                 strategy_model = OpinionPassingStrategyModel(
@@ -203,6 +204,7 @@ def main(cfg):
                     edge_emb_dim=8,
                     num_layers=2,
                     aggr="add",
+                    constraint=constraint,
                 )
     else:
         strategy_model = NoStrategy()

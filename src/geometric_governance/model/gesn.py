@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 import torch
 import torch.nn as nn
-from torch_scatter import scatter_add, scatter_softmax
+from torch_scatter import scatter_add, scatter_softmax, scatter_mean
 from torch_geometric.data import Data
 
 from geometric_governance.third_party.fast_soft_sort.pytorch_ops import soft_rank
@@ -48,14 +48,39 @@ class StrategyModel(nn.Module):
             case "none":
                 votes = values
             case "ordinal":
+                epsilon = self.constraint_args
+
+                votes = torch.zeros_like(values, dtype=torch.float32)
+                values = values.squeeze(-1)
                 if self.training:
-                    epsilon = self.constraint_args[0]
-                    votes = soft_rank(
-                        values, regularization_strength=epsilon, direction="DESCENDING"
+                    # Z-Normalize
+                    mean = scatter_mean(values, edge_index[0], dim=0)[edge_index[0]]
+                    variance = torch.sqrt(
+                        scatter_mean((values - mean) ** 2, edge_index[0], dim=0)[
+                            edge_index[0]
+                        ]
+                        + 1e-8
                     )
+                    values = (values - mean) / variance
+
+                    for voter in torch.unique(edge_index[0]):
+                        mask = edge_index[0] == voter
+                        voter_values = values[mask].unsqueeze(0)
+                        voter_votes = soft_rank(
+                            voter_values,
+                            regularization_strength=epsilon,
+                            direction="DESCENDING",
+                        )
+                        votes[mask] = voter_votes.T
                 else:
                     # During inference, we can use the argsort to get the ordinal votes
-                    votes = torch.argsort(values, dim=0, descending=True)
+                    for voter in torch.unique(edge_index[0]):
+                        mask = edge_index[0] == voter
+                        voter_values = values[mask].unsqueeze(0)
+                        voter_votes = torch.argsort(
+                            voter_values, dim=1, descending=True
+                        ).float()
+                        votes[mask] = voter_votes.T
             case _:
                 raise ValueError(
                     f"Unknown constraint {self.constraint}. Must be one of ['sum', 'range']"
@@ -78,7 +103,10 @@ class DeepSetStrategyModel(StrategyModel):
         self,
         emb_dim: int = 32,
         num_layers: int = 2,
-        constraint: tuple[Literal["sum", "range", "ordinal", "none"], Any] = ("sum", 1.0),
+        constraint: tuple[Literal["sum", "range", "ordinal", "none"], Any] = (
+            "sum",
+            1.0,
+        ),
     ):
         super().__init__(constraint=constraint)
         self.emb_dim = emb_dim
@@ -187,8 +215,12 @@ class MessagePassingStrategyModel(StrategyModel):
         edge_emb_dim: int = 8,
         num_layers: int = 3,
         aggr: str = "add",
+        constraint: tuple[Literal["sum", "range", "ordinal", "none"], Any] = (
+            "sum",
+            1.0,
+        ),
     ):
-        super().__init__()
+        super().__init__(constraint=constraint)
         in_dim = 2
 
         # Initial embedding

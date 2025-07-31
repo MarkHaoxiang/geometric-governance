@@ -44,4 +44,4 @@ monotonicity_loss_batch_size: 32
 strategy_module_enable: true
 strategy_p: 0.2
 strategy_voter_information: public
-use_rankings: true
+use_rankings: false
