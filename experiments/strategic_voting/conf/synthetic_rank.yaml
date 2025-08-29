@@ -28,7 +28,7 @@ test_dataset:
 election_model:
   size: medium
   from_pretrained: default
-  freeze_weights: false
+  freeze_weights: true
 train:
   num_epochs: 330
   iterations_per_epoch: 25
